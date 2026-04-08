@@ -1,0 +1,470 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+// prisma/schema.prisma
+
+
+// =====================================================
+// 1. BRANCHES
+// =====================================================
+model Branch {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String   @unique
+  branchCode      String   @unique @map("branch_code")
+
+  address         String?
+  city            String?
+  postalCode      String?  @map("postal_code")
+  country         String?
+  phone           String?
+  email           String?
+
+
+
+  isActive        Boolean  @default(true) @map("is_active")
+  openingDate     DateTime? @map("opening_date") @db.Date
+  notes           String?
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  users                   User[]
+  menuItemAvailability    MenuItemAvailabilityException[]
+  dailySpecials           DailySpecial[]
+  branchInventory         BranchInventory[]
+  bracnhPrivileges         BranchPrivilege[]
+  purchaseBatches         PurchaseBatch[]
+  dailyUsages             DailyUsage[]
+  orders                  Order[]
+  fromTransfers           UserTransferHistory[] @relation("FromBranch")
+  toTransfers             UserTransferHistory[] @relation("ToBranch")
+
+  @@map("branches")
+}
+
+// =====================================================
+// 2. USERS
+// =====================================================
+model User {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username        String   @unique
+  email           String   @unique
+  passwordHash    String   @map("password_hash")
+  fullName        String?  @map("full_name")
+  role            UserRole
+
+  branchId        String?  @db.Uuid @map("branch_id")
+  branch          Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  isActive        Boolean  @default(true) @map("is_active")
+
+  createdBy       String?  @db.Uuid @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  createdUsers    User[]   @relation("CreatedBy")
+  createdByUser   User?    @relation("CreatedBy", fields: [createdBy], references: [id])
+  transfers       UserTransferHistory[] @relation("UserTransfers")
+  approvedTransfers UserTransferHistory[] @relation("ApprovedBy")
+  purchasedBatches PurchaseBatch[] @relation("PurchasedBy")
+  approvedBatches  PurchaseBatch[] @relation("ApprovedBy")
+  createdDailyUsages DailyUsage[] @relation("CreatedByUsage")
+  ordersAsWaiter  Order[]  @relation("Waiter")
+  ordersAsChef    Order[]  @relation("Chef")
+  ordersAsCashier Order[]  @relation("Cashier")
+
+  @@map("users")
+}
+
+enum UserRole {
+  super_admin
+  branch_admin
+  store_manager
+  waiter
+  cashier
+  staff
+  chef
+}
+
+// =====================================================
+// 3. USER TRANSFER HISTORY
+// =====================================================
+model UserTransferHistory {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String   @db.Uuid @map("user_id")
+  fromBranchId      String?  @db.Uuid @map("from_branch_id")
+  toBranchId        String   @db.Uuid @map("to_branch_id")
+  transferDate      DateTime @map("transfer_date") @db.Date
+  roleAtNewBranch   String   @map("role_at_new_branch")
+  approvedBy        String?  @db.Uuid @map("approved_by")
+  notes             String?
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade, name: "UserTransfers")
+  fromBranch        Branch?  @relation("FromBranch", fields: [fromBranchId], references: [id], onDelete: SetNull)
+  toBranch          Branch   @relation("ToBranch", fields: [toBranchId], references: [id], onDelete: Cascade)
+  approvedByUser    User?    @relation("ApprovedBy", fields: [approvedBy], references: [id])
+
+  @@map("user_transfer_history")
+}
+
+// =====================================================
+// 4. MENU SYSTEM
+// =====================================================
+model MainCategory {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String   @unique
+  displayOrder  Int      @default(0) @map("display_order")
+  createdBy     String?  @db.Uuid @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  subcategories Subcategory[]
+
+  @@map("main_categories")
+}
+
+model Subcategory {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String
+  mainCategoryId    String   @db.Uuid @map("main_category_id")
+  displayOrder      Int      @default(0) @map("display_order")
+  createdBy         String?  @db.Uuid @map("created_by")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  mainCategory      MainCategory @relation(fields: [mainCategoryId], references: [id])
+  menuItems         MenuItem[]
+  dailySpecials     DailySpecial[]
+
+  @@unique([mainCategoryId, name])
+  @@map("subcategories")
+}
+
+model MenuItem {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                String
+  price               Decimal  @db.Decimal(10, 2)
+  imageUrl            String?  @map("image_url")
+  description         String?
+  calories            Int?
+  preparationTime     Int?     @map("preparation_time")
+  subcategoryId       String   @db.Uuid @map("subcategory_id")
+  defaultAvailable    Boolean  @default(true) @map("default_available")
+
+  createdBy           String?  @db.Uuid @map("created_by")
+  updatedBy           String?  @db.Uuid @map("updated_by")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  subcategory         Subcategory @relation(fields: [subcategoryId], references: [id])
+  availabilityExceptions MenuItemAvailabilityException[]
+  orderItems          OrderItem[]
+  dailySpecials       DailySpecial[]
+
+  @@map("menu_items")
+}
+
+model MenuItemAvailabilityException {
+  menuItemId   String  @db.Uuid @map("menu_item_id")
+  branchId     String  @db.Uuid @map("branch_id")
+  isAvailable  Boolean @map("is_available")
+  updatedBy    String? @db.Uuid @map("updated_by")
+  updatedAt    DateTime @default(now()) @map("updated_at")
+
+  menuItem     MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  branch       Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@id([menuItemId, branchId])
+  @@map("menu_item_availability_exceptions")
+}
+
+model BranchPrivilege {
+  branchId                String @id @db.Uuid @map("branch_id")
+  canEditName             Boolean @default(false) @map("can_edit_name")
+  canEditPrice            Boolean @default(false) @map("can_edit_price")
+  canEditImage            Boolean @default(false) @map("can_edit_image")
+  canEditDescription      Boolean @default(false) @map("can_edit_description")
+  canEditCalories         Boolean @default(false) @map("can_edit_calories")
+  canEditPreparationTime  Boolean @default(false) @map("can_edit_preparation_time")
+  updatedBy               String? @db.Uuid @map("updated_by")
+  updatedAt               DateTime @default(now()) @map("updated_at")
+
+  branch                  Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@map("branch_privileges")
+}
+
+model DailySpecial {
+  branchId       String @db.Uuid @map("branch_id")
+  subcategoryId  String @db.Uuid @map("subcategory_id")
+  menuItemId     String @db.Uuid @map("menu_item_id")
+  createdBy      String? @db.Uuid @map("created_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  branch         Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  subcategory    Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+  menuItem       MenuItem    @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@id([branchId, subcategoryId])
+  @@map("daily_specials")
+}
+
+// =====================================================
+// 5. INVENTORY SYSTEM
+// =====================================================
+model Supplier {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  supplierName  String   @map("supplier_name")
+  contactPerson String?  @map("contact_person")
+  phone         String?
+  email         String?
+  address       String?
+
+  createdBy     String?  @db.Uuid @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  purchaseBatches PurchaseBatch[]
+
+  @@map("suppliers")
+}
+
+model StoreItem {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String
+  category      String?
+  description   String?
+
+  createdBy     String?  @db.Uuid @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  variants      StoreItemVariant[]
+
+  @@map("store_items")
+}
+
+model StoreItemVariant {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeItemId       String   @db.Uuid @map("store_item_id")
+  variantName       String   @map("variant_name")
+
+  baseUnit          String   @map("base_unit")
+  packUnit          String?  @map("pack_unit")
+  unitsPerPack      Int?     @map("units_per_pack")
+  defaultMinStock   Decimal? @default(0) @map("default_min_stock") @db.Decimal(10, 2)
+
+  sku               String?  @unique
+  barcode           String?
+
+  createdBy         String?  @db.Uuid @map("created_by")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  storeItem         StoreItem @relation(fields: [storeItemId], references: [id])
+  branchInventories BranchInventory[]
+  purchaseBatches   PurchaseBatch[]
+  dailyUsages       DailyUsage[]
+
+  @@unique([storeItemId, variantName])
+  @@map("store_items_variants")
+}
+
+model BranchInventory {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId        String   @db.Uuid @map("branch_id")
+  variantId       String   @db.Uuid @map("variant_id")
+
+  currentStock    Decimal  @default(0) @map("current_stock") @db.Decimal(10, 2)
+  minStockLevel   Decimal  @default(0) @map("min_stock_level") @db.Decimal(10, 2)
+
+  lastUpdated     DateTime @default(now()) @map("last_updated")
+  updatedBy       String?  @db.Uuid @map("updated_by")
+  deletedAt       DateTime? @map("deleted_at")
+
+  branch          Branch           @relation(fields: [branchId], references: [id])
+  variant         StoreItemVariant @relation(fields: [variantId], references: [id])
+
+  @@unique([branchId, variantId])
+  @@map("branch_inventory")
+}
+
+model PurchaseBatch {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId            String   @db.Uuid @map("branch_id")
+  variantId           String   @db.Uuid @map("variant_id")
+  supplierId          String?  @db.Uuid @map("supplier_id")
+
+  purchaseDate        DateTime @map("purchase_date") @db.Date
+
+  quantityPurchased   Decimal  @map("quantity_purchased") @db.Decimal(10, 2)
+  quantityRemaining   Decimal  @map("quantity_remaining") @db.Decimal(10, 2)
+
+  unitPrice           Decimal  @map("unit_price") @db.Decimal(10, 2)
+  packPrice           Decimal? @map("pack_price") @db.Decimal(10, 2)
+  totalCost           Decimal  @map("total_cost") @db.Decimal(10, 2)
+
+  status              String   @default("pending") // pending, approved, rejected
+  purchasedBy         String   @db.Uuid @map("purchased_by")
+  approvedBy          String?  @db.Uuid @map("approved_by")
+  approvedAt          DateTime? @map("approved_at")
+
+  invoiceNumber       String?  @map("invoice_number")
+  notes               String?
+
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  branch              Branch           @relation(fields: [branchId], references: [id])
+  variant             StoreItemVariant @relation(fields: [variantId], references: [id])
+  supplier            Supplier?        @relation(fields: [supplierId], references: [id])
+  purchasedByUser     User             @relation("PurchasedBy", fields: [purchasedBy], references: [id])
+  approvedByUser      User?            @relation("ApprovedBy", fields: [approvedBy], references: [id])
+
+  usageDetails        UsageBatchDetail[]
+
+  @@map("purchase_batches")
+}
+
+model DailyUsage {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId      String   @db.Uuid @map("branch_id")
+  variantId     String   @db.Uuid @map("variant_id")
+  usageDate     DateTime @map("usage_date") @db.Date
+
+  quantityUsed  Decimal  @map("quantity_used") @db.Decimal(10, 2)
+  totalCost     Decimal  @map("total_cost") @db.Decimal(10, 2)
+
+  notes         String?
+  createdBy     String   @db.Uuid @map("created_by")
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  branch        Branch           @relation(fields: [branchId], references: [id])
+  variant       StoreItemVariant @relation(fields: [variantId], references: [id])
+  createdByUser User             @relation("CreatedByUsage", fields: [createdBy], references: [id])
+
+  usageDetails  UsageBatchDetail[]
+
+  @@unique([branchId, variantId, usageDate])
+  @@map("daily_usage")
+}
+
+model UsageBatchDetail {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usageId       String   @db.Uuid @map("usage_id")
+  batchId       String   @db.Uuid @map("batch_id")
+
+  quantityUsed  Decimal  @map("quantity_used") @db.Decimal(10, 2)
+  unitPrice     Decimal  @map("unit_price") @db.Decimal(10, 2)
+  cost          Decimal  @db.Decimal(10, 2)
+
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  usage         DailyUsage   @relation(fields: [usageId], references: [id], onDelete: Cascade)
+  batch         PurchaseBatch @relation(fields: [batchId], references: [id])
+
+  @@map("usage_batch_details")
+}
+
+// =====================================================
+// 6. ORDERS SYSTEM
+// =====================================================
+model Order {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId        String   @db.Uuid @map("branch_id")
+  orderNumber     String   @map("order_number")
+  tableNumber     String?  @map("table_number")
+
+  status          String   @default("pending")
+  waiterId        String   @db.Uuid @map("waiter_id")
+  chefId          String?  @db.Uuid @map("chef_id")
+  cashierId       String?  @db.Uuid @map("cashier_id")
+
+  subtotal        Decimal  @default(0) @db.Decimal(10, 2)
+  taxAmount       Decimal  @default(0) @map("tax_amount") @db.Decimal(10, 2)
+  discountAmount  Decimal  @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  totalAmount     Decimal  @default(0) @map("total_amount") @db.Decimal(10, 2)
+
+  paymentMethod   String?
+  paymentStatus   String   @default("unpaid") @map("payment_status")
+  paidAt          DateTime? @map("paid_at")
+
+  customerNotes   String?  @map("customer_notes")
+  kitchenNotes    String?  @map("kitchen_notes")
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  completedAt     DateTime? @map("completed_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  branch          Branch     @relation(fields: [branchId], references: [id])
+  waiter          User       @relation("Waiter", fields: [waiterId], references: [id])
+  chef            User?      @relation("Chef", fields: [chefId], references: [id])
+  cashier         User?      @relation("Cashier", fields: [cashierId], references: [id])
+
+  items           OrderItem[]
+
+  @@unique([branchId, orderNumber])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId             String   @db.Uuid @map("order_id")
+  menuItemId          String   @db.Uuid @map("menu_item_id")
+  quantity            Int
+  unitPrice           Decimal  @map("unit_price") @db.Decimal(10, 2)
+  subtotal            Decimal  @db.Decimal(10, 2)
+
+  status              String   @default("pending")
+  specialInstructions String?  @map("special_instructions")
+
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  order               Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem            MenuItem @relation(fields: [menuItemId], references: [id])
+
+  @@map("order_items")
+}
+
+// =====================================================
+// ENUMS (for better type safety)
+// =====================================================
+enum OrderStatus {
+  pending
+  preparing
+  ready
+  completed
+  cancelled
+}
+
+enum PaymentStatus {
+  unpaid
+  paid
+  refunded
+}
