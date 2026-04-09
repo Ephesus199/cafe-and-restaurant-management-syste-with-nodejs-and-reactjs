@@ -51,6 +51,7 @@ const prisma = new PrismaClient({ adapter });
       params.action = 'update'
       params.args.data = {
         deletedAt: new Date(),
+        updatedAt: new Date(), // Ensure updatedAt is also set on soft delete
       }
     }
   }
@@ -61,6 +62,16 @@ const prisma = new PrismaClient({ adapter });
       params.args.data = {
         deletedAt: new Date(),
       }
+    }
+  }
+
+  if (["update", "updateMany"].includes(params.action)) {
+    if (softDeleteModels.includes(model)) {
+      // Ensure updatedAt is always set on updates
+      params.args.data = {
+        ...params.args.data,
+        updatedAt: new Date(),
+      };
     }
   }
 
