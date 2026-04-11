@@ -27,3 +27,33 @@ export const updateUserSchema = z.object({
   email: z.string().email().optional(),
   role: z.enum(["store_manager", "waiter", "cashier", "staff"]).optional(),
 }).strict();
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(6),
+    newPassword: z
+      .string()
+      .min(8, "New password must be at least 8 characters"),
+    confirmNewPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmNewPassword, {
+    message: "New passwords do not match",
+    path: ["confirmNewPassword"],
+  });
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Please provide a valid email address"),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1, "Reset token is required"),
+    newPassword: z
+      .string()
+      .min(8, "New password must be at least 8 characters"),
+    confirmNewPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmNewPassword, {
+    message: "Passwords do not match",
+    path: ["confirmNewPassword"],
+  });

@@ -1,5 +1,5 @@
 import type { Response, NextFunction } from "express";
-import { verifyToken } from "../utils/jwt";
+import { verifyAccessToken } from "../utils/jwt";
 import type { AuthRequest } from "../types";
 
 export const protect = (
@@ -21,7 +21,7 @@ export const protect = (
     if (!token) {
       return res.status(401).json({ message: "Access denied. No token provided." });
     }
-    const decoded = verifyToken(token);
+    const decoded = verifyAccessToken(token);
 
     req.user = decoded;
     next();
