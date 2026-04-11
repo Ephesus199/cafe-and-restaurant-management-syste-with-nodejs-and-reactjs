@@ -23,4 +23,7 @@ export const createUserSchema = z.object({
 export const updateUserSchema = z.object({
   fullName: z.string().min(2).max(100).optional(),
   isActive: z.boolean().optional(),
-});
+  username: z.string().min(3).max(50).optional(),
+  email: z.string().email().optional(),
+  role: z.enum(["store_manager", "waiter", "cashier", "staff"]).optional(),
+}).strict();

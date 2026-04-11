@@ -5,7 +5,9 @@ export const validate = (schema: ZodObject) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       // Parse only the body (most common case)
+      console.log("Validating request body:", req.body);
       req.body = await schema.parseAsync(req.body);
+      console.log("Validation successful:", req.body);
       next();
     } catch (error) {
       if (error instanceof ZodError) {
@@ -16,7 +18,7 @@ export const validate = (schema: ZodObject) => {
 
         return res.status(400).json({
           success: false,
-          message: "Validation failed",
+          message: "Validation failed for the request data",
           errors: formattedErrors,
         });
       }
