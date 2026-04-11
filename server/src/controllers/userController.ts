@@ -2,14 +2,25 @@ import type { Response } from "express";
 import bcrypt from "bcryptjs";
 import { prisma } from "../../lib/prisma";
 import type { AuthRequest } from "../types";
+import { createUserSchema } from "../validation";
 
 export const createUser = async (req: AuthRequest, res: Response) => {
   try {
-    const { username, email, password, fullName, role } = req.body;
+    const { username, email, password, fullName, role, branchId } =
+      createUserSchema.parse(req.body);
     const creator = req.user!;
+    //   const createdBy = creator.id;
+    console.log("Creating user with data:", {
+      created_by: creator.id,
+      username,
+      email,
+      role,
+      branchId,
+      creator,
+    });
 
     // Validation
-    if (!username || !email || !password || !role) {
+    if (!username || !email || !password || !role || !branchId) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -42,10 +53,10 @@ export const createUser = async (req: AuthRequest, res: Response) => {
         username: username.toLowerCase(),
         email: email.toLowerCase(),
         passwordHash: hashedPassword,
-        fullName,
+        fullName: fullName ?? null,
         role,
-        branchId: req.body.branchId,
-        createdBy: creator.id,
+        branchId,
+        // createdBy,
       },
       select: {
         id: true,

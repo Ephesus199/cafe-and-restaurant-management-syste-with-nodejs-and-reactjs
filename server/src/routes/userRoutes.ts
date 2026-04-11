@@ -1,11 +1,15 @@
 import express from "express";
+import { validate } from "../middleware/validateMiddleware";
+import { createUserSchema } from "../validation";
 
 
-const userRouter = express.Router();
 
 import { protect, authorizeRoles } from "../middleware/authMiddleware";
 import { createUser } from "../controllers/userController";
 
-userRouter.post("/", protect, authorizeRoles("super_admin", "branch_admin"), createUser);
+const userRouter = express.Router();
+userRouter.use(protect);
+
+userRouter.post("/", validate(createUserSchema), authorizeRoles("super_admin", "branch_admin"), createUser);
 
 export default userRouter;

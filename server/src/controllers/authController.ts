@@ -3,10 +3,11 @@ import bcrypt from "bcryptjs";
 // import prisma from "../prisma/client";
 import { prisma } from "../../lib/prisma";
 import { generateToken } from "../utils/jwt";
+import { loginSchema } from "../validation";
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, username, password } = req.body;
+    const { email, username, password } = loginSchema.parse(req.body);
 
     if (!password || (!email && !username)) {
       return res
@@ -14,17 +15,19 @@ export const login = async (req: Request, res: Response) => {
         .json({ message: "Email/Username and password are required" });
     }
 
+    const whereConditions = [
+      ...(email ? [{ email: email.toLowerCase() }] : []),
+      ...(username ? [{ username: username.toLowerCase() }] : []),
+    ];
+
     const user = await prisma.user.findFirst({
       where: {
-        OR: [
-          { email: email?.toLowerCase() },
-          { username: username?.toLowerCase() },
-        ],
+        OR: whereConditions,
         deletedAt: null,
         isActive: true,
       },
     });
-      console.log("User found for login:", user);
+    console.log("User found for login:", user);
 
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
