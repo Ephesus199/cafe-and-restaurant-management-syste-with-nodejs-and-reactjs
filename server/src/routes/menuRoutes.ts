@@ -1,0 +1,86 @@
+import { Router } from "express";
+import { protect, authorizeRoles } from "../middleware/authMiddleware";
+import {
+  createMainCategory,
+  getMainCategories,
+  createSubcategory,
+  getSubcategories,
+  createMenuItem,
+  getMenuItems,
+  getMenuForBranch,
+  updateMenuItem,
+  toggleAvailability,
+  setDailySpecial,
+  getDailySpecials,
+} from "../controllers/menuController";
+import { validate } from "../middleware/validateMiddleware";
+import {
+  createMainCategorySchema,
+  createSubcategorySchema,
+  createMenuItemSchema,
+  updateMenuItemSchema,
+} from "../validation/index";
+
+const router = Router();
+
+// All menu routes require authentication
+router.use(protect);
+
+// ==================== MAIN CATEGORIES ====================
+router.post(
+  "/categories",
+  authorizeRoles("super_admin"),
+  validate(createMainCategorySchema),
+  createMainCategory,
+);
+
+router.get("/categories", getMainCategories);
+
+// ==================== SUBCATEGORIES ====================
+router.post(
+  "/subcategories",
+  authorizeRoles("super_admin", "branch_admin"),
+  validate(createSubcategorySchema),
+  createSubcategory,
+);
+
+router.get("/subcategories", getSubcategories);
+
+// ==================== MENU ITEMS ====================
+router.post(
+  "/items",
+  authorizeRoles("super_admin", "branch_admin"),
+  validate(createMenuItemSchema),
+  createMenuItem,
+);
+
+router.get("/items", authorizeRoles("super_admin"), getMenuItems);
+
+// Get menu for a specific branch (with availability)
+router.get("/branches/:branchId/menu", getMenuForBranch);
+
+// Update menu item (global)
+router.put(
+  "/items/:id",
+  authorizeRoles("super_admin", "branch_admin"),
+  validate(updateMenuItemSchema),
+  updateMenuItem,
+);
+
+// Toggle availability for a branch
+router.patch(
+  "/branches/:branchId/menu/:itemId/availability",
+  authorizeRoles("branch_admin"),
+  toggleAvailability,
+);
+
+// ==================== DAILY SPECIALS ====================
+router.post(
+  "/branches/:branchId/daily-specials",
+  authorizeRoles("branch_admin"),
+  setDailySpecial,
+);
+
+router.get("/branches/:branchId/daily-specials", getDailySpecials);
+
+export default router;

@@ -20,13 +20,15 @@ export const createUserSchema = z.object({
   branchId: z.string().uuid().optional(),
 });
 
-export const updateUserSchema = z.object({
-  fullName: z.string().min(2).max(100).optional(),
-  isActive: z.boolean().optional(),
-  username: z.string().min(3).max(50).optional(),
-  email: z.string().email().optional(),
-  role: z.enum(["store_manager", "waiter", "cashier", "staff"]).optional(),
-}).strict();
+export const updateUserSchema = z
+  .object({
+    fullName: z.string().min(2).max(100).optional(),
+    isActive: z.boolean().optional(),
+    username: z.string().min(3).max(50).optional(),
+    email: z.string().email().optional(),
+    role: z.enum(["store_manager", "waiter", "cashier", "staff"]).optional(),
+  })
+  .strict();
 
 export const changePasswordSchema = z
   .object({
@@ -58,8 +60,7 @@ export const resetPasswordSchema = z
     path: ["confirmNewPassword"],
   });
 
-
-  // Branch Validations
+// Branch Validations
 export const createBranchSchema = z.object({
   name: z.string().min(3).max(100),
   branchCode: z.string().min(2).max(50),
@@ -83,4 +84,116 @@ export const updateBranchSchema = z.object({
   email: z.string().email().optional(),
   isActive: z.boolean().optional(),
   notes: z.string().optional(),
+});
+
+export const createMainCategorySchema = z.object({
+  name: z
+    .string()
+    .min(2, "Category name must be at least 2 characters")
+    .max(100, "Category name cannot exceed 100 characters"),
+  displayOrder: z
+    .number()
+    .int("Display order must be an integer")
+    .min(0, "Display order cannot be negative")
+    .optional()
+    .default(0),
+ 
+});
+
+// ====================== SUBCATEGORY ======================
+export const createSubcategorySchema = z.object({
+  body: z.object({
+    name: z
+      .string()
+      .min(2, "Subcategory name must be at least 2 characters")
+      .max(100, "Subcategory name cannot exceed 100 characters"),
+    mainCategoryId: z.string().uuid("Invalid main category ID"),
+    displayOrder: z
+      .number()
+      .int("Display order must be an integer")
+      .min(0, "Display order cannot be negative")
+      .optional()
+      .default(0),
+  }),
+});
+
+// ====================== MENU ITEM ======================
+export const createMenuItemSchema = z.object({
+  body: z.object({
+    name: z
+      .string()
+      .min(3, "Menu item name must be at least 3 characters")
+      .max(200, "Menu item name cannot exceed 200 characters"),
+
+    price: z.number().positive("Price must be greater than 0"),
+
+    imageUrl: z.string().url("Invalid image URL").optional(),
+
+    description: z
+      .string()
+      .max(1000, "Description cannot exceed 1000 characters")
+      .optional(),
+
+    calories: z
+      .number()
+      .int("Calories must be a whole number")
+      .positive()
+      .optional(),
+
+    preparationTime: z
+      .number()
+      .int("Preparation time must be a whole number")
+      .positive()
+      .optional(),
+
+    subcategoryId: z.string().uuid("Invalid subcategory ID"),
+
+    defaultAvailable: z.boolean().default(true),
+  }),
+});
+
+export const updateMenuItemSchema = z.object({
+  body: z.object({
+    name: z
+      .string()
+      .min(3, "Menu item name must be at least 3 characters")
+      .max(200, "Menu item name cannot exceed 200 characters")
+      .optional(),
+
+    price: z.number().positive("Price must be greater than 0").optional(),
+
+    imageUrl: z.string().url("Invalid image URL").optional(),
+
+    description: z
+      .string()
+      .max(1000, "Description cannot exceed 1000 characters")
+      .optional(),
+
+    calories: z
+      .number()
+      .int("Calories must be a whole number")
+      .positive()
+      .optional(),
+
+    preparationTime: z
+      .number()
+      .int("Preparation time must be a whole number")
+      .positive()
+      .optional(),
+  }),
+});
+
+// ====================== AVAILABILITY ======================
+export const toggleAvailabilitySchema = z.object({
+  body: z.object({
+    isAvailable: z.boolean(),
+  }),
+});
+
+// ====================== DAILY SPECIAL ======================
+export const setDailySpecialSchema = z.object({
+  body: z.object({
+    subcategoryId: z.string().uuid("Invalid subcategory ID"),
+    menuItemId: z.string().uuid("Invalid menu item ID"),
+  }),
 });
