@@ -57,3 +57,30 @@ export const resetPasswordSchema = z
     message: "Passwords do not match",
     path: ["confirmNewPassword"],
   });
+
+
+  // Branch Validations
+export const createBranchSchema = z.object({
+  name: z.string().min(3).max(100),
+  branchCode: z.string().min(2).max(50),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  postalCode: z.string().optional(),
+  country: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email().optional(),
+
+  openingDate: z.string().datetime().optional(),
+  notes: z.string().optional(),
+});
+
+export const updateBranchSchema = z.object({
+  name: z.string().min(3).max(100).optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  postalCode: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email().optional(),
+  isActive: z.boolean().optional(),
+  notes: z.string().optional(),
+});

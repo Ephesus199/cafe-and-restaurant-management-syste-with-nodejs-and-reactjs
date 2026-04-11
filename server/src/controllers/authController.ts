@@ -44,6 +44,13 @@ export const login = async (req: Request, res: Response) => {
 
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true, // ← Most important
+      secure: process.env.NODE_ENV === "production", // Use HTTPS in production
+      sameSite: "strict", // Protects against CSRF
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: "/",
+    });
 
     res.json({
       success: true,
@@ -58,7 +65,7 @@ export const login = async (req: Request, res: Response) => {
           branchId: user.branchId,
         },
         accessToken,
-        refreshToken,
+        // refreshToken, // No need to send refresh token in response body since it's in cookie
       },
     });
   } catch (error) {
@@ -70,7 +77,8 @@ export const login = async (req: Request, res: Response) => {
 // Refresh Token
 export const refreshToken = async (req: Request, res: Response) => {
   try {
-    const { refreshToken } = req.body;
+    // const { refreshToken } = req.body;
+    const refreshToken = req.cookies.refreshToken; // Read from cookie
 
     if (!refreshToken) {
       return res
@@ -148,6 +156,11 @@ export const getMe = async (req: AuthRequest, res: Response) => {
 // Logout (Client-side only for now - stateless JWT)
 export const logout = async (req: Request, res: Response) => {
   // For stateless JWT, we just tell client to delete tokens
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
   res.json({
     success: true,
     message: "Logged out successfully. Please delete tokens from client.",
