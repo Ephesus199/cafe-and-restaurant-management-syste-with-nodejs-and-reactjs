@@ -12,6 +12,7 @@ import {
   toggleAvailability,
   setDailySpecial,
   getDailySpecials,
+  getAvailableMenuForBranch,
 } from "../controllers/menuController";
 import { validate } from "../middleware/validateMiddleware";
 import {
@@ -22,6 +23,15 @@ import {
 } from "../validation/index";
 
 const router = Router();
+
+router.get("/categories", getMainCategories);
+router.get("/subcategories", getSubcategories);
+
+
+router.get("/branches/:branchId/available-menu", getAvailableMenuForBranch);
+
+
+
 
 // All menu routes require authentication
 router.use(protect);
@@ -34,7 +44,6 @@ router.post(
   createMainCategory,
 );
 
-router.get("/categories", getMainCategories);
 
 // ==================== SUBCATEGORIES ====================
 router.post(
@@ -44,7 +53,6 @@ router.post(
   createSubcategory,
 );
 
-router.get("/subcategories", getSubcategories);
 
 // ==================== MENU ITEMS ====================
 router.post(
@@ -58,6 +66,7 @@ router.get("/items", authorizeRoles("super_admin"), getMenuItems);
 
 // Get menu for a specific branch (with availability)
 router.get("/branches/:branchId/menu", getMenuForBranch);
+
 
 // Update menu item (global)
 router.put(

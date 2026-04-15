@@ -9,6 +9,9 @@ import {
   createMenuItemSchema,
   updateMenuItemSchema,
 } from "../validation/index";
+import { CloudinaryService, } from "../utils/cloudinaryServices";
+import type { UploadedFile } from "express-fileupload";
+import type fileUpload from "express-fileupload";
 
 // ==================== MAIN CATEGORIES ====================
 export const createMainCategory = async (req: AuthRequest, res: Response) => {
@@ -57,9 +60,9 @@ export const createSubcategory = async (req: AuthRequest, res: Response) => {
 
     const subcategory = await prisma.subcategory.create({
       data: {
-        name: data.body.name,
-        mainCategoryId: data.body.mainCategoryId,
-        displayOrder: data.body.displayOrder,
+        name: data.name,
+        mainCategoryId: data.mainCategoryId,
+        displayOrder: data.displayOrder,
         createdBy: req.user!.id,
       },
     });
@@ -97,18 +100,36 @@ export const getSubcategories = async (req: Request, res: Response) => {
 
 // ==================== MENU ITEMS ====================
 export const createMenuItem = async (req: AuthRequest, res: Response) => {
+
   try {
+
     const data = createMenuItemSchema.parse(req.body);
+    // console.log("header content-type:", req.headers["content-type"]);
+    const imageFile = req.files?.image as UploadedFile
+    // rename image to prevent naming conflicts in Cloudinary
+    if (imageFile) {
+      const timestamp = Date.now();
+      const originalName = imageFile.name.replace(/\s+/g, "_");
+      imageFile.name = `${timestamp}_${originalName}`;
+    }
+    console.log("request files", req.files);
+    console.log("Received menu item data:", data);
+    let imageUrl: string | undefined;
+
+    if (imageFile) {
+      imageUrl = await CloudinaryService.uploadImage(imageFile, "cafe-menu");
+      console.log("Uploaded image URL:", imageUrl);
+    }
 
     const menuItem = await prisma.menuItem.create({
       data: {
-        name: data.body.name,
-        price: data.body.price,
-        imageUrl: data.body.imageUrl === undefined ? null : data.body.imageUrl,
-        description: data.body.description === undefined ? null : data.body.description,
-        calories: data.body.calories === undefined ? null : data.body.calories,
-        preparationTime: data.body.preparationTime === undefined ? null : data.body.preparationTime,
-        subcategoryId: data.body.subcategoryId,
+        name: data.name,
+        price: data.price,
+        imageUrl: imageUrl === undefined ? null : imageUrl,
+        description: data.description === undefined ? null : data.description,
+        calories: data.calories === undefined ? null : data.calories,
+        preparationTime: data.preparationTime === undefined ? null : data.preparationTime,
+        subcategoryId: data.subcategoryId,
         // defaultAvailable: data.body.defaultAvailable,
         createdBy: req.user!.id,
       },
@@ -175,14 +196,18 @@ export const getMenuForBranch = async (req: AuthRequest, res: Response) => {
       },
     });
 
+
     const result = menuItems.map((item) => {
       const exception = item.availabilityExceptions[0];
+      console.log("exception:", exception);
       return {
         ...item,
         availabilityExceptions: undefined,
         isAvailable: exception ? exception.isAvailable : item.defaultAvailable,
       };
     });
+
+    console.log("Menu for branch:", result);
 
     res.json({
       success: true,
@@ -195,24 +220,108 @@ export const getMenuForBranch = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const getAvailableMenuForBranch = async (req: AuthRequest, res: Response) => {
+  try {
+      let { branchId } = req.params;
+
+      if (Array.isArray(branchId)) {
+        branchId = branchId[0];
+      }
+
+      if(!branchId) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Branch ID is required" });
+      }
+      
+
+    const menuItems = await prisma.menuItem.findMany({
+      where: { deletedAt: null },
+      include: {
+        subcategory: {
+          include: {
+            mainCategory: true,
+          },
+        },
+        availabilityExceptions: {
+          where: { branchId },
+        },
+      },
+    });
+
+
+    const result = menuItems.map((item) => {
+      const exception = item.availabilityExceptions[0];
+      console.log("exception:", exception);
+      return {
+        ...item,
+        availabilityExceptions: undefined,
+        isAvailable: exception ? exception.isAvailable : item.defaultAvailable,
+      };
+    });
+
+    const finalavailableItems = result.filter(item => item.isAvailable);
+
+    res.json({
+      success: true,
+      data: finalavailableItems,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch branch menu" });
+  }
+};
+
 export const updateMenuItem = async (req: AuthRequest, res: Response) => {
   try {
-      let { id } = req.params;
-      if (Array.isArray(id)) {
-        id = id[0];
-      }
-      if (!id) {
-        return res.status(400)
-          .json({ success: false, message: "Menu item ID is required" });
-      }
-    const data = updateMenuItemSchema.parse(req.body);
+    let { id } = req.params;
+    // Ensure id is a string (handle string[] or undefined)
+    if (Array.isArray(id)) {
+      id = id[0];
+    }
+    if (typeof id !== "string") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid menu item id" });
+    }
+    console.log("updating menu body:", req.body);
+    // Parse body (now safe even if body is empty)
+    const bodyData = updateMenuItemSchema.parse(req.body) || {};
+
+    const imageFile = req.files?.image as UploadedFile | undefined;
+
+    // Get current menu item to delete old image if new one is uploaded
+    const existingItem = await prisma.menuItem.findUnique({
+      where: { id },
+    });
+
+    let imageUrl = existingItem?.imageUrl;
+
+    // If new image is uploaded, replace old one
+    if (imageFile) {
+      imageUrl = await CloudinaryService.replaceImage(
+        existingItem?.imageUrl || null,
+        imageFile,
+      );
+    }
+
+    // Prepare update data to match Prisma's MenuItemUpdateInput
+    const updateData: any = {};
+    if (bodyData.name !== undefined) updateData.name = { set: bodyData.name };
+    if (bodyData.price !== undefined) updateData.price = { set: bodyData.price };
+    if (bodyData.description !== undefined)
+      updateData.description = { set: bodyData.description };
+    if (bodyData.calories !== undefined)
+      updateData.calories = { set: bodyData.calories };
+    if (bodyData.preparationTime !== undefined)
+      updateData.preparationTime = { set: bodyData.preparationTime };
+    if (imageUrl !== undefined) updateData.imageUrl = { set: imageUrl };
+    updateData.updatedBy = { set: req.user!.id };
 
     const menuItem = await prisma.menuItem.update({
       where: { id },
-      data: {
-        ...data,
-        updatedBy: req.user!.id,
-      },
+      data: updateData,
     });
 
     res.json({

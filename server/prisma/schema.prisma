@@ -159,7 +159,7 @@ model Subcategory {
 
 model MenuItem {
   id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                String
+  name                String   
   price               Decimal  @db.Decimal(10, 2)
   imageUrl            String?  @map("image_url")
   description         String?

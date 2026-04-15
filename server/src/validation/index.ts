@@ -102,98 +102,93 @@ export const createMainCategorySchema = z.object({
 
 // ====================== SUBCATEGORY ======================
 export const createSubcategorySchema = z.object({
-  body: z.object({
-    name: z
-      .string()
-      .min(2, "Subcategory name must be at least 2 characters")
-      .max(100, "Subcategory name cannot exceed 100 characters"),
-    mainCategoryId: z.string().uuid("Invalid main category ID"),
-    displayOrder: z
-      .number()
-      .int("Display order must be an integer")
-      .min(0, "Display order cannot be negative")
-      .optional()
-      .default(0),
-  }),
+  name: z
+    .string()
+    .min(2, "Subcategory name must be at least 2 characters")
+    .max(100, "Subcategory name cannot exceed 100 characters"),
+  mainCategoryId: z.string().uuid("Invalid main category ID"),
+  displayOrder: z
+    .number()
+    .int("Display order must be an integer")
+    .min(0, "Display order cannot be negative")
+    .optional()
+    .default(0),
+ 
 });
 
 // ====================== MENU ITEM ======================
 export const createMenuItemSchema = z.object({
-  body: z.object({
-    name: z
-      .string()
-      .min(3, "Menu item name must be at least 3 characters")
-      .max(200, "Menu item name cannot exceed 200 characters"),
+  name: z
+    .string()
+    .min(3, "Menu item name must be at least 3 characters")
+    .max(200, "Menu item name cannot exceed 200 characters"),
 
-    price: z.number().positive("Price must be greater than 0"),
+  price: z.coerce.number().positive("Price must be greater than 0"),
 
-    imageUrl: z.string().url("Invalid image URL").optional(),
+  imageUrl: z.string().url("Invalid image URL").optional(),
 
-    description: z
-      .string()
-      .max(1000, "Description cannot exceed 1000 characters")
-      .optional(),
+  description: z
+    .string()
+    .max(1000, "Description cannot exceed 1000 characters")
+    .optional(),
 
-    calories: z
-      .number()
-      .int("Calories must be a whole number")
-      .positive()
-      .optional(),
+  calories: z
+    .number()
+    .int("Calories must be a whole number")
+    .positive()
+    .optional(),
 
-    preparationTime: z
-      .number()
-      .int("Preparation time must be a whole number")
-      .positive()
-      .optional(),
+  preparationTime: z
+    .number()
+    .int("Preparation time must be a whole number")
+    .positive()
+    .optional(),
 
-    subcategoryId: z.string().uuid("Invalid subcategory ID"),
+  subcategoryId: z.string().uuid("Invalid subcategory ID"),
 
-    defaultAvailable: z.boolean().default(true),
-  }),
+  defaultAvailable: z.boolean().default(true),
+ 
 });
 
 export const updateMenuItemSchema = z.object({
-  body: z.object({
-    name: z
-      .string()
-      .min(3, "Menu item name must be at least 3 characters")
-      .max(200, "Menu item name cannot exceed 200 characters")
-      .optional(),
+  name: z
+    .string()
+    .min(3, "Menu item name must be at least 3 characters")
+    .max(200, "Menu item name cannot exceed 200 characters")
+    .optional(),
 
-    price: z.number().positive("Price must be greater than 0").optional(),
+  price: z.number().positive("Price must be greater than 0").optional(),
 
-    imageUrl: z.string().url("Invalid image URL").optional(),
+  // imageUrl: z.string().url("Invalid image URL").optional(),
 
-    description: z
-      .string()
-      .max(1000, "Description cannot exceed 1000 characters")
-      .optional(),
+  description: z
+    .string()
+    .max(1000, "Description cannot exceed 1000 characters")
+    .optional(),
 
-    calories: z
-      .number()
-      .int("Calories must be a whole number")
-      .positive()
-      .optional(),
+  calories: z
+    .number()
+    .int("Calories must be a whole number")
+    .positive()
+    .optional(),
 
-    preparationTime: z
-      .number()
-      .int("Preparation time must be a whole number")
-      .positive()
-      .optional(),
-  }),
+  preparationTime: z
+    .number()
+    .int("Preparation time must be a whole number")
+    .positive()
+    .optional(),
+
 });
 
 // ====================== AVAILABILITY ======================
 export const toggleAvailabilitySchema = z.object({
-  body: z.object({
-    isAvailable: z.boolean(),
-  }),
+  isAvailable: z.boolean(),
+
 });
 
 // ====================== DAILY SPECIAL ======================
 export const setDailySpecialSchema = z.object({
-  body: z.object({
-    subcategoryId: z.string().uuid("Invalid subcategory ID"),
-    menuItemId: z.string().uuid("Invalid menu item ID"),
-  }),
+  subcategoryId: z.string().uuid("Invalid subcategory ID"),
+  menuItemId: z.string().uuid("Invalid menu item ID"),
+
 });
