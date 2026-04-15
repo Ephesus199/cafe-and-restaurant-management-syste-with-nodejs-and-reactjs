@@ -356,7 +356,7 @@ model DailyUsage {
   usageDate     DateTime @map("usage_date") @db.Date
 
   quantityUsed  Decimal  @map("quantity_used") @db.Decimal(10, 2)
-  totalCost     Decimal  @map("total_cost") @db.Decimal(10, 2)
+  totalCost     Decimal?  @map("total_cost") @db.Decimal(10, 2)
 
   notes         String?
   createdBy     String   @db.Uuid @map("created_by")
