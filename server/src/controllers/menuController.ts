@@ -100,40 +100,44 @@ export const getSubcategories = async (req: Request, res: Response) => {
 
 // ==================== MENU ITEMS ====================
 export const createMenuItem = async (req: AuthRequest, res: Response) => {
-
   try {
-
     const data = createMenuItemSchema.parse(req.body);
-    // console.log("header content-type:", req.headers["content-type"]);
-    const imageFile = req.files?.image as UploadedFile
-    // rename image to prevent naming conflicts in Cloudinary
-    if (imageFile) {
-      const timestamp = Date.now();
-      const originalName = imageFile.name.replace(/\s+/g, "_");
-      imageFile.name = `${timestamp}_${originalName}`;
-    }
-    console.log("request files", req.files);
-    console.log("Received menu item data:", data);
-    let imageUrl: string | undefined;
+    const creator = req.user!;
+    const imageFile = req.files?.image as UploadedFile | undefined;
 
+
+    let imageUrl: string | null = null;
     if (imageFile) {
       imageUrl = await CloudinaryService.uploadImage(imageFile, "cafe-menu");
-      console.log("Uploaded image URL:", imageUrl);
     }
+
+    const isBranchAdmin = creator.role === "branch_admin";
 
     const menuItem = await prisma.menuItem.create({
       data: {
         name: data.name,
         price: data.price,
-        imageUrl: imageUrl === undefined ? null : imageUrl,
-        description: data.description === undefined ? null : data.description,
-        calories: data.calories === undefined ? null : data.calories,
-        preparationTime: data.preparationTime === undefined ? null : data.preparationTime,
+        imageUrl: imageUrl,
+        description: data.description ?? null,
+        calories: data.calories ?? null,
+        preparationTime: data.preparationTime ?? null,
         subcategoryId: data.subcategoryId,
-        // defaultAvailable: data.body.defaultAvailable,
-        createdBy: req.user!.id,
+        defaultAvailable: !isBranchAdmin, // ← Key change
+        createdBy: creator.id,
       },
     });
+
+    // If created by Branch Admin → create exception for their branch
+    if (isBranchAdmin && creator.branchId) {
+      await prisma.menuItemAvailabilityException.create({
+        data: {
+          menuItemId: menuItem.id,
+          branchId: creator.branchId,
+          isAvailable: true,
+          updatedBy: creator.id,
+        },
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -144,7 +148,6 @@ export const createMenuItem = async (req: AuthRequest, res: Response) => {
     res.status(400).json({ success: false, message: error.message });
   }
 };
-
 export const getMenuItems = async (req: Request, res: Response) => {
   try {
     const items = await prisma.menuItem.findMany({
@@ -336,41 +339,73 @@ export const updateMenuItem = async (req: AuthRequest, res: Response) => {
 
 export const toggleAvailability = async (req: AuthRequest, res: Response) => {
   try {
-      let { branchId, itemId } = req.params;
-      if (Array.isArray(branchId)) {
-          branchId = branchId[0];
-      }
-      if (Array.isArray(itemId)) {
-          itemId = itemId[0];
-      }
-      
-      if (!branchId || !itemId) {
-            return res.status(400).json({ success: false, message: "Branch ID and Menu Item ID are required" });
-      }
+    let { branchId, itemId } = req.params;
+    if (Array.isArray(branchId)) {
+      branchId = branchId[0];
+    }
+    if (Array.isArray(itemId)) {
+      itemId = itemId[0];
+    }
+    if (!branchId || !itemId) {
+      return res.status(400)
+        .json({ success: false, message: "Branch ID and Item ID are required" });
+    }
     const { isAvailable } = req.body;
+    const currentUser = req.user!;
 
-    await prisma.menuItemAvailabilityException.upsert({
-      where: {
-        menuItemId_branchId: {
-          menuItemId: itemId,
-          branchId,
-        },
-      },
-      update: {
-        isAvailable,
-        updatedBy: req.user!.id,
-      },
-      create: {
-        menuItemId: itemId===undefined ? "" : itemId,
-        branchId,
-        isAvailable,
-        updatedBy: req.user!.id,
-      },
+    // Get the menu item to check defaultAvailable
+    const menuItem = await prisma.menuItem.findUnique({
+      where: { id: itemId },
     });
+
+    if (!menuItem) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Menu item not found" });
+    }
+
+    // Branch Admin can only toggle for their own branch
+    if (
+      currentUser.role === "branch_admin" &&
+      currentUser.branchId !== branchId
+    ) {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
+    if (isAvailable === menuItem.defaultAvailable) {
+      // If setting to default value → delete exception (cleanup)
+      await prisma.menuItemAvailabilityException.deleteMany({
+        where: {
+          menuItemId: itemId,
+          branchId: branchId,
+        },
+      });
+    } else {
+      // Otherwise upsert the exception
+      await prisma.menuItemAvailabilityException.upsert({
+        where: {
+          menuItemId_branchId: {
+            menuItemId: itemId,
+            branchId: branchId,
+          },
+        },
+        update: {
+          isAvailable,
+          updatedBy: currentUser.id,
+        },
+        create: {
+          menuItemId: itemId,
+          branchId: branchId,
+          isAvailable,
+          updatedBy: currentUser.id,
+        },
+      });
+    }
 
     res.json({
       success: true,
-      message: "Availability updated for this branch",
+      message: `Availability updated for this branch`,
+      data: { isAvailable },
     });
   } catch (error) {
     res
