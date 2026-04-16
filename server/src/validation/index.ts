@@ -196,7 +196,6 @@ export const createSupplierSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email().optional(),
   address: z.string().optional(),
-
 });
 
 // ====================== STORE ITEM ======================
@@ -204,7 +203,6 @@ export const createStoreItemSchema = z.object({
   name: z.string().min(3).max(255),
   category: z.string().optional(),
   description: z.string().optional(),
-
 });
 
 // ====================== STORE ITEM VARIANT ======================
@@ -217,7 +215,6 @@ export const createStoreItemVariantSchema = z.object({
   defaultMinStock: z.number().min(0).default(0),
   sku: z.string().optional(),
   barcode: z.string().optional(),
-
 });
 
 // ====================== PURCHASE BATCH ======================
@@ -234,7 +231,6 @@ export const createPurchaseBatchSchema = z.object({
   packPrice: z.number().positive().optional(),
   invoiceNumber: z.string().optional(),
   notes: z.string().optional(),
-
 });
 
 // ====================== DAILY USAGE ======================
@@ -243,5 +239,34 @@ export const createDailyUsageSchema = z.object({
   usageDate: z.string().datetime().optional().default(new Date().toISOString()),
   quantityUsed: z.number().positive("Quantity used must be greater than 0"),
   notes: z.string().optional(),
+});
+
+
+
+// Create Order
+export const createOrderSchema = z.object({
+  tableNumber: z.string().optional(),
+  customerNotes: z.string().optional(),
+  kitchenNotes: z.string().optional(),
+
+});
+
+// Add Item to Order
+export const addOrderItemSchema = z.object({
+  menuItemId: z.string().uuid("Invalid menu item ID"),
+  quantity: z.number().int().positive("Quantity must be at least 1"),
+  specialInstructions: z.string().optional(),
+
+});
+
+// Update Order Status
+export const updateOrderStatusSchema = z.object({
+  status: z.enum(["pending", "preparing", "ready", "completed", "cancelled"]),
+
+});
+
+// Mark Order as Paid
+export const markOrderPaidSchema = z.object({
+  paymentMethod: z.enum(["cash", "card", "upi", "other"]),
 
 });
