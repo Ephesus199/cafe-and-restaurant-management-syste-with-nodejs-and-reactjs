@@ -398,7 +398,7 @@ model UsageBatchDetail {
 model Order {
   id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   branchId        String   @db.Uuid @map("branch_id")
-  orderNumber     String   @map("order_number")
+  orderNumber     String?  @map("order_number")
   tableNumber     String?  @map("table_number")
 
   status          String   @default("pending")
