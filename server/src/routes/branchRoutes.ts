@@ -9,6 +9,7 @@ import {
 } from "../controllers/branchController";
 import { validate } from "../middleware/validateMiddleware";
 import { createBranchSchema, updateBranchSchema } from "../validation/index";
+import { getOrdersByBranch } from "../controllers/orderController";
 
 const router = Router();
 
@@ -26,6 +27,12 @@ router.post(
 
 
 router.get("/:id", authorizeRoles("super_admin"), getBranchById);
+// Get all orders for a branch
+router.get(
+  "/branches/:branchId/orders",
+  authorizeRoles("branch_admin", "waiter", "cashier"),
+  getOrdersByBranch,
+);
 
 router.put(
   "/:id",

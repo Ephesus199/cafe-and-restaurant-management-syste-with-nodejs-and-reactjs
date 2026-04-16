@@ -209,3 +209,37 @@ export const getOrdersByBranch = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ success: false, message: "Failed to fetch orders" });
   }
 };
+
+// Get Single Order Details
+export const getOrderById = async (req: AuthRequest, res: Response) => {
+    try {
+        let { orderId } = req.params;
+        if (Array.isArray(orderId)) {
+            orderId = orderId[0];
+        }
+        if (!orderId) {
+            return res.status(400).json({ success: false, message: "Order ID is required" });
+        }
+
+        const order = await prisma.order.findUnique({
+            where: { id: orderId },
+            include: {
+                items: {
+                    include: {
+                        menuItem: true,
+                    },
+                },
+                waiter: {
+                    select: { fullName: true },
+                },
+            },
+        });
+
+        res.json({
+            success: true,
+            data: order,
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Failed to fetch order details" });
+    }
+};
