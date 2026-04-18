@@ -3,13 +3,31 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../../lib/prisma";
 import type { AuthRequest } from "../types";
 import { createUserSchema, updateUserSchema } from "../validation";
+import type { User } from "../../generated/prisma/client";
 
 export const createUser = async (req: AuthRequest, res: Response) => {
   try {
     const { username, email, password, fullName, role, branchId } =
       createUserSchema.parse(req.body);
+  
+    let existingAdmin:User | null = null;
+    if (role === "branch_admin") {
+      existingAdmin = await prisma.user.findFirst({
+        where: {
+          role: "branch_admin",
+          ...(branchId && { branchId })
+        }
+      })
+
+      if(existingAdmin) {
+        return res.status(409).json({ 
+          message: "A branch admin already exists for this branch" 
+        })
+      }
+    }
+
     const creator = req.user!;
-      const createdBy = creator.id;
+    const createdBy = creator.id;
     console.log("Creating user with data:", {
       created_by: creator.id,
       username,

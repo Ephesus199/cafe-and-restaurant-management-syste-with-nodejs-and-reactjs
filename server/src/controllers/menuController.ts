@@ -26,6 +26,11 @@ export const createMainCategory = async (req: AuthRequest, res: Response) => {
         displayOrder: data.displayOrder,
         createdBy: req.user!.id,
       },
+      select: {
+        id: true,
+        name: true,
+        displayOrder: true,
+      }
     });
 
     res.status(201).json({
@@ -43,6 +48,11 @@ export const getMainCategories = async (req: Request, res: Response) => {
     const categories = await prisma.mainCategory.findMany({
       where: { deletedAt: null },
       orderBy: { displayOrder: "asc" },
+      select: {
+        id: true,
+        name: true,
+        displayOrder: true,
+      }
     });
 
     res.json({ success: true, data: categories });
@@ -65,6 +75,12 @@ export const createSubcategory = async (req: AuthRequest, res: Response) => {
         displayOrder: data.displayOrder,
         createdBy: req.user!.id,
       },
+      select: {
+        id: true,
+        name: true,
+        mainCategoryId: true,
+        displayOrder: true,
+      }
     });
 
     res.status(201).json({
@@ -81,13 +97,26 @@ export const getSubcategories = async (req: Request, res: Response) => {
   try {
     const subcategories = await prisma.subcategory.findMany({
       where: { deletedAt: null },
-      include: {
-        mainCategory: true,
-      },
+      
+      select: {
+        id: true,
+        name: true,
+        displayOrder: true,
+        mainCategory: {
+          select: {
+            id: true,
+            name: true,
+            displayOrder: true,
+          }
+        }
+       
+     },
       orderBy: [
         { mainCategory: { displayOrder: "asc" } },
         { displayOrder: "asc" },
+
       ],
+   
     });
 
     res.json({ success: true, data: subcategories });
@@ -104,7 +133,7 @@ export const createMenuItem = async (req: AuthRequest, res: Response) => {
     const data = createMenuItemSchema.parse(req.body);
     const creator = req.user!;
     const imageFile = req.files?.image as UploadedFile | undefined;
-
+    console.log("image file: ", imageFile);
 
     let imageUrl: string | null = null;
     if (imageFile) {
@@ -125,6 +154,18 @@ export const createMenuItem = async (req: AuthRequest, res: Response) => {
         defaultAvailable: !isBranchAdmin, // ← Key change
         createdBy: creator.id,
       },
+
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        imageUrl: true,
+        description: true,
+        calories: true,
+        preparationTime: true,
+        subcategoryId: true,
+        defaultAvailable: true,
+      }
     });
 
     // If created by Branch Admin → create exception for their branch
@@ -152,12 +193,25 @@ export const getMenuItems = async (req: Request, res: Response) => {
   try {
     const items = await prisma.menuItem.findMany({
       where: { deletedAt: null },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        imageUrl: true,
+        description: true,
+        calories: true,
+        preparationTime: true,
         subcategory: {
-          include: {
-            mainCategory: true,
-          },
-        },
+          select: {
+            id: true,
+            name: true,
+            mainCategory: {
+              select: {
+                id: true,
+                name: true,              }
+            }
+          }
+        }
       },
       orderBy: { name: "asc" },
     });
@@ -185,19 +239,62 @@ export const getMenuForBranch = async (req: AuthRequest, res: Response) => {
       }
       
 
-    const menuItems = await prisma.menuItem.findMany({
-      where: { deletedAt: null },
-      include: {
-        subcategory: {
-          include: {
-            mainCategory: true,
-          },
-        },
-        availabilityExceptions: {
-          where: { branchId },
-        },
-      },
-    });
+   const menuItems = await prisma.menuItem.findMany({
+     where: { deletedAt: null },
+
+     select: {
+       id: true,
+       name: true,
+       price: true,
+       description: true,
+       imageUrl: true,
+       displayOrder: true,
+       defaultAvailable: true,
+       isAvailable: true,
+       // Add any other menuItem fields you need
+       // sku: true,
+       // calories: true,
+
+       // Nested relation: subcategory + mainCategory
+       subcategory: {
+         select: {
+           id: true,
+           name: true,
+           displayOrder: true,
+           // slug: true,
+
+           mainCategory: {
+             select: {
+               id: true,
+               name: true,
+               displayOrder: true,
+               // icon: true,
+               // color: true,
+             },
+           },
+         },
+       },
+
+       // Availability exceptions for specific branch
+       availabilityExceptions: {
+         where: { branchId }, // filter by branch
+         select: {
+           id: true,
+           isAvailable: true,
+           // startDate: true,
+           // endDate: true,
+           // reason: true,
+         },
+       },
+     },
+
+     // Optional: Order the results
+     orderBy: [
+       { subcategory: { mainCategory: { displayOrder: "asc" } } },
+       { subcategory: { displayOrder: "asc" } },
+       { displayOrder: "asc" },
+     ],
+   });
 
 
     const result = menuItems.map((item) => {

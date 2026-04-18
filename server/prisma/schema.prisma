@@ -39,7 +39,8 @@ model Branch {
   updatedAt       DateTime @updatedAt @map("updated_at")
   deletedAt       DateTime? @map("deleted_at")
 
-  users                   User[]
+ branchAdmin         User?    @relation("BranchAdmin")                    // One-to-One (back relation)
+  user               User[]   @relation("UserBranch")  // ← Enforces one admin per branch
   menuItemAvailability    MenuItemAvailabilityException[]
   dailySpecials           DailySpecial[]
   branchInventory         BranchInventory[]
@@ -65,9 +66,14 @@ model User {
   resetPasswordToken      String?  @map("reset_password_token")
   resetPasswordExpires DateTime? @map("reset_password_expires")
   role            UserRole
+// === Branch Relations ===
+  // 1. One-to-One for branch_admin only
+  managedBranch       Branch?  @relation("BranchAdmin", fields: [managedBranchId], references: [id])
+  managedBranchId     String?  @db.Uuid @unique @map("managed_branch_id")   // ← Enforces 1:1
 
-  branchId        String?  @db.Uuid @map("branch_id")
-  branch          Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  // 2. Many-to-One for all other roles (waiter, cashier, etc.)
+  branchId            String?  @db.Uuid @map("branch_id")
+  branch              Branch?  @relation("UserBranch", fields: [branchId], references: [id], onDelete: SetNull)
 
   isActive        Boolean  @default(true) @map("is_active")
 

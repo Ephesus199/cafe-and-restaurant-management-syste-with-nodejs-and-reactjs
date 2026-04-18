@@ -32,6 +32,19 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
         subtotal: 0,
         totalAmount: 0,
       },
+      select: {
+        id: true,
+        branchId: true,
+        waiterId: true,
+        tableNumber: true,
+        customerNotes: true,
+        kitchenNotes: true,
+        status: true,
+        subtotal: true,
+        totalAmount: true,
+
+
+      }
     });
 
     res.status(201).json({
@@ -93,6 +106,16 @@ export const addOrderItem = async (req: AuthRequest, res: Response) => {
         specialInstructions: data.specialInstructions ?? null,
         status: "pending",
       },
+      select: {
+        id: true,
+        orderId: true,
+        menuItemId: true,
+        quantity: true,
+        unitPrice: true,
+        subtotal: true,
+        specialInstructions: true,
+        status: true,
+      } 
     });
 
     res.status(201).json({

@@ -3,6 +3,12 @@ import { prisma } from "../lib/prisma";
 
 
 async function main() {
+    // first delete existing data to avoid conflicts
+    await prisma.user.deleteMany();
+    await prisma.branch.deleteMany();
+    await prisma.orderItem.deleteMany();
+    await prisma.order.deleteMany();
+
     console.log("Seeding database...");
     // Add your seeding logic here, for example:
     const firstUser = await prisma.user.create({
@@ -10,7 +16,7 @@ async function main() {
             username: "efesonuliso",
             email: "efesonuliso2020@gmail.com",
             fullName: "Efeson Uliso",
-            passwordHash: await bcrypt.hash("admin123", 10),
+            passwordHash: await bcrypt.hash("12345678", 12),
             role: "super_admin",
             branchId: null,
             createdBy: null,
