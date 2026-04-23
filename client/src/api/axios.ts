@@ -11,6 +11,7 @@ const api = axios.create({
 // Request interceptor - Add Access Token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("accessToken");
+  console.log("Attaching token to request:", token);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -23,28 +24,34 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // If 401 and we haven't tried refreshing yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const isLoginRequest = originalRequest.url?.includes("/auth/login");
+
+    const isRefreshRequest = originalRequest.url?.includes("/auth/refresh");
+
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isLoginRequest &&
+      !isRefreshRequest
+    ) {
       originalRequest._retry = true;
 
       try {
-        // Refresh token request - cookie will be sent automatically
         const res = await axios.post(
           `${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/auth/refresh`,
           {},
-          { withCredentials: true }, // ← Crucial for sending HttpOnly cookie
+          { withCredentials: true },
         );
 
         const newAccessToken = res.data.data.accessToken;
         localStorage.setItem("accessToken", newAccessToken);
 
-        // Retry the original request with new token
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed → Force logout
-          localStorage.removeItem("accessToken");
-          console.error("Token refresh failed:", refreshError);
+        console.log("Token refresh failed:", refreshError);
+        localStorage.removeItem("accessToken");
         window.location.href = "/login";
       }
     }

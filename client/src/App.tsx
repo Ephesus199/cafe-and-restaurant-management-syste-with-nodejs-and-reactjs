@@ -1,13 +1,42 @@
-
+import { BrowserRouter, Route, Routes } from "react-router-dom"
+import { Login } from "./page/Login"
+import QueryProvider from "./providers/queryProvider"
+import { AuthProvider } from "./context/authContext"
+import ProtectedRoute from "./component/ProtectedRoute"
+import CreateUser from "./page/CreateUser"
+import SuperAdminDashboard from "./page/SuperAdminDashboard"
 
 
 function App() {
   
   return (
     <>
-      <h1>Welcome to the App!</h1>
+      <QueryProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route
+                
+                element={
+                  <ProtectedRoute allowedRoles={["super_admin"]} />
+              
+                    
+                }
+              >
+                <Route path="/admin/dashboard" element={<SuperAdminDashboard />} />
+              </Route>
+
+              <Route element={<ProtectedRoute allowedRoles={["super_admin", "branch_admin"]} />}>
+                <Route path="/create-user" element={<CreateUser />} />
+              </Route>
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </QueryProvider>
     </>
-  )
+  );
 }
 
 export default App

@@ -64,7 +64,10 @@ export const getBranches = async (req: Request, res: Response) => {
   } catch (error) {
     res
       .status(500)
-      .json({ success: false, message: "Failed to fetch branches" });
+      .json({
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
   }
 };
 

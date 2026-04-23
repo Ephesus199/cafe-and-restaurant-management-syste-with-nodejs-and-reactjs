@@ -9,7 +9,15 @@ export const createUser = async (req: AuthRequest, res: Response) => {
   try {
     const { username, email, password, fullName, role, branchId } =
       createUserSchema.parse(req.body);
-  
+    console.log("Creating user with data:", {
+      username,
+      email,
+      password,
+      fullName,
+      role,
+      branchId
+    });
+
     let existingAdmin:User | null = null;
     if (role === "branch_admin") {
       existingAdmin = await prisma.user.findFirst({

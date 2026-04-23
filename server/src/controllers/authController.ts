@@ -17,6 +17,7 @@ import { sendResetEmail } from "../utils/email";
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, username, password } = req.body;
+    console.log("Login attempt with:", { email, username });
 
     const user = await prisma.user.findFirst({
       where: {
@@ -28,6 +29,8 @@ export const login = async (req: Request, res: Response) => {
         isActive: true,
       },
     });
+
+    console.log("User found:", user ? { id: user.id, email: user.email } : null);
 
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
       return res
