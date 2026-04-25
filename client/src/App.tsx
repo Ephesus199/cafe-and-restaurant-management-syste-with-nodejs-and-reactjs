@@ -6,6 +6,7 @@ import ProtectedRoute from "./component/ProtectedRoute"
 import CreateUser from "./page/CreateUser"
 import SuperAdminDashboard from "./page/SuperAdminDashboard"
 import ForgotPassword from "./page/ForgotPassword"
+import ResetPassword from "./page/RestPassword"
 
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route
                 
                 element={
