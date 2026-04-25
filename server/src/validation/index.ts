@@ -87,10 +87,10 @@ export const updateBranchSchema = z.object({
 });
 
 export const createMainCategorySchema = z.object({
-  name: z
-    .string()
-    .min(2, "Category name must be at least 2 characters")
-    .max(100, "Category name cannot exceed 100 characters"),
+ translations: z.array(z.object({
+      languageCode: z.enum(['en', 'am', 'oro']),
+      name: z.string().min(2, "Translation name must be at least 2 characters").max(100,"Translation name cannot exceed 100 characters"),
+    })).min(1, "At least one translation is required"),
   displayOrder: z
     .number()
     .int("Display order must be an integer")
@@ -101,10 +101,14 @@ export const createMainCategorySchema = z.object({
 
 // ====================== SUBCATEGORY ======================
 export const createSubcategorySchema = z.object({
-  name: z
-    .string()
-    .min(2, "Subcategory name must be at least 2 characters")
-    .max(100, "Subcategory name cannot exceed 100 characters"),
+  translations: z
+    .array(
+      z.object({
+        languageCode: z.enum(["en", "am", "ar"]),
+        name: z.string().min(2, "Translation name must be at least 2 characters").max(100, "Translation name cannot exceed 100 characters"  ),
+      }),
+    )
+    .min(1, "At least one translation is required"),
   mainCategoryId: z.string().uuid("Invalid main category ID"),
   displayOrder: z
     .number()
@@ -116,10 +120,15 @@ export const createSubcategorySchema = z.object({
 
 // ====================== MENU ITEM ======================
 export const createMenuItemSchema = z.object({
-  name: z
-    .string()
-    .min(3, "Menu item name must be at least 3 characters")
-    .max(200, "Menu item name cannot exceed 200 characters"),
+  translations: z
+    .array(
+      z.object({
+        languageCode: z.enum(["en", "am", "ar"]),
+        name: z.string().min(3, "Translation name must be at least 3 characters").max(200, "Translation name cannot exceed 200 characters"),
+        description: z.string().optional(),
+      }),
+    )
+    .min(1, "At least one translation is required"),
 
   price: z.coerce.number().positive("Price must be greater than 0"),
 
@@ -148,11 +157,15 @@ export const createMenuItemSchema = z.object({
 });
 
 export const updateMenuItemSchema = z.object({
-  name: z
-    .string()
-    .min(3, "Menu item name must be at least 3 characters")
-    .max(200, "Menu item name cannot exceed 200 characters")
-    .optional(),
+  translations: z
+    .array(
+      z.object({
+        languageCode: z.enum(["en", "am", "ar"]),
+        name: z.string().min(3, "Translation name must be at least 3 characters").max(200, "Translation name cannot exceed 200 characters"),
+        description: z.string().optional(),
+      }),
+    )
+    .min(1, "At least one translation is required"),
 
   price: z.number().positive("Price must be greater than 0").optional(),
 

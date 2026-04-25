@@ -15,27 +15,46 @@ import type fileUpload from "express-fileupload";
 
 // ==================== MAIN CATEGORIES ====================
 export const createMainCategory = async (req: AuthRequest, res: Response) => {
+
   try {
-    // Ensure req.body is typed as any for Zod parsing
-      const data = createMainCategorySchema.parse(req.body as any);
-      console.log("Creating main category with data:", data);
+    const data = createMainCategorySchema.parse(req.body);
+    console.log("Creating main category with data:", data);
+    const { displayOrder, translations } = data;
+
+    // Find English translation (default)
+    const englishTranslation = translations.find(
+      (t: any) => t.languageCode === "en",
+    );
+
+    if (!englishTranslation || !englishTranslation.name) {
+      return res.status(400).json({
+        success: false,
+        message: "English name is required as default",
+      });
+    }
 
     const category = await prisma.mainCategory.create({
       data: {
-        name: data.name,
-        displayOrder: data.displayOrder,
+        name: englishTranslation.name.trim(), // ← Store English in main table
+        displayOrder: displayOrder || 0,
         createdBy: req.user!.id,
+
+        // Create all translations (including English)
+        translations: {
+          create: translations.map((t: any) => ({
+            languageCode: t.languageCode,
+            name: t.name.trim(),
+          })),
+        },
       },
-      select: {
-        id: true,
-        name: true,
-        displayOrder: true,
-      }
+      include: {
+        translations: true,
+      },
     });
 
     res.status(201).json({
       success: true,
-      message: "Main category created successfully",
+      message: "Main category created successfully with translations",
       data: category,
     });
   } catch (error: any) {
@@ -67,20 +86,25 @@ export const getMainCategories = async (req: Request, res: Response) => {
 export const createSubcategory = async (req: AuthRequest, res: Response) => {
   try {
     const data = createSubcategorySchema.parse(req.body);
+    console.log("Creating subcategory with data:", data);
+    const { displayOrder, mainCategoryId, translations } = data;
+    const englishName = translations.find(
+      (t: any) => t.languageCode === "en",
+    )?.name;
 
     const subcategory = await prisma.subcategory.create({
       data: {
-        name: data.name,
+        name: englishName?.trim() || "", // ← Store English here too
         mainCategoryId: data.mainCategoryId,
-        displayOrder: data.displayOrder,
+        displayOrder: data.displayOrder || 0,
         createdBy: req.user!.id,
+        translations: {
+          create: translations.map((t: any) => ({
+            languageCode: t.languageCode,
+            name: t.name.trim(),
+          })),
+        },
       },
-      select: {
-        id: true,
-        name: true,
-        mainCategoryId: true,
-        displayOrder: true,
-      }
     });
 
     res.status(201).json({
@@ -131,6 +155,8 @@ export const getSubcategories = async (req: Request, res: Response) => {
 export const createMenuItem = async (req: AuthRequest, res: Response) => {
   try {
     const data = createMenuItemSchema.parse(req.body);
+    console.log("Creating menu item with data:", data);
+    const { translations } = data;
     const creator = req.user!;
     const imageFile = req.files?.image as UploadedFile | undefined;
     console.log("image file: ", imageFile);
@@ -142,30 +168,28 @@ export const createMenuItem = async (req: AuthRequest, res: Response) => {
 
     const isBranchAdmin = creator.role === "branch_admin";
 
+    const englishTranslation = translations.find(
+      (t: any) => t.languageCode === "en",
+    );
+
     const menuItem = await prisma.menuItem.create({
       data: {
-        name: data.name,
+        name: englishTranslation?.name.trim() || "", // ← Store English name here
         price: data.price,
-        imageUrl: imageUrl,
-        description: data.description ?? null,
-        calories: data.calories ?? null,
-        preparationTime: data.preparationTime ?? null,
+        imageUrl,
+        description: englishTranslation?.description || "",
         subcategoryId: data.subcategoryId,
-        defaultAvailable: !isBranchAdmin, // ← Key change
-        createdBy: creator.id,
-      },
+        defaultAvailable: data.defaultAvailable,
+        createdBy: req.user!.id,
 
-      select: {
-        id: true,
-        name: true,
-        price: true,
-        imageUrl: true,
-        description: true,
-        calories: true,
-        preparationTime: true,
-        subcategoryId: true,
-        defaultAvailable: true,
-      }
+        translations: {
+          create: translations.map((t: any) => ({
+            languageCode: t.languageCode,
+            name: t.name.trim(),
+            description: t.description?.trim(),
+          })),
+        },
+      },
     });
 
     // If created by Branch Admin → create exception for their branch
@@ -408,7 +432,7 @@ export const updateMenuItem = async (req: AuthRequest, res: Response) => {
 
     // Prepare update data to match Prisma's MenuItemUpdateInput
     const updateData: any = {};
-    if (bodyData.name !== undefined) updateData.name = { set: bodyData.name };
+    // if (bodyData.name !== undefined) updateData.name = { set: bodyData.name };
     if (bodyData.price !== undefined) updateData.price = { set: bodyData.price };
     if (bodyData.description !== undefined)
       updateData.description = { set: bodyData.description };
