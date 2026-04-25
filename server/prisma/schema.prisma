@@ -140,9 +140,22 @@ model MainCategory {
   updatedAt     DateTime @updatedAt @map("updated_at")
   deletedAt     DateTime? @map("deleted_at")
 
+  translations  MainCategoryTranslation[]
   subcategories Subcategory[]
 
   @@map("main_categories")
+}
+
+model MainCategoryTranslation {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mainCategoryId    String   @db.Uuid @map("main_category_id")
+  languageCode      String   @map("language_code")   // e.g., "en", "am", "ar", "fr"
+  name              String
+
+  mainCategory      MainCategory @relation(fields: [mainCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([mainCategoryId, languageCode])
+  @@map("main_category_translations")
 }
 
 model Subcategory {
@@ -155,12 +168,25 @@ model Subcategory {
   updatedAt         DateTime @updatedAt @map("updated_at")
   deletedAt         DateTime? @map("deleted_at")
 
+  translations      SubcategoryTranslation[]
   mainCategory      MainCategory @relation(fields: [mainCategoryId], references: [id])
   menuItems         MenuItem[]
   dailySpecials     DailySpecial[]
 
   @@unique([mainCategoryId, name])
   @@map("subcategories")
+}
+
+model SubcategoryTranslation {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  subcategoryId     String   @db.Uuid @map("subcategory_id")
+  languageCode      String   @map("language_code")
+  name              String
+
+  subcategory       Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([subcategoryId, languageCode])
+  @@map("subcategory_translations")
 }
 
 model MenuItem {
@@ -179,13 +205,26 @@ model MenuItem {
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
   deletedAt           DateTime? @map("deleted_at")
-
+  translations        MenuItemTranslation[]
   subcategory         Subcategory @relation(fields: [subcategoryId], references: [id])
   availabilityExceptions MenuItemAvailabilityException[]
   orderItems          OrderItem[]
   dailySpecials       DailySpecial[]
 
   @@map("menu_items")
+}
+
+model MenuItemTranslation {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  menuItemId        String   @db.Uuid @map("menu_item_id")
+  languageCode      String   @map("language_code")
+  name              String
+  description       String?
+
+  menuItem          MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@unique([menuItemId, languageCode])
+  @@map("menu_item_translations")
 }
 
 model MenuItemAvailabilityException {
