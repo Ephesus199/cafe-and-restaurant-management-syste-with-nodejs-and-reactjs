@@ -11,6 +11,8 @@ import CreateBranch from "./page/CreateBranch";
 import ChangePassword from "./page/ChangePassword";
 import Profile from "./page/Profile";
 import UpdateBranch from "./page/UpdateBranch";
+import CreateCategory from "./page/CreateCategory";
+import CreateSubCategory from "./page/CreateSubCategory";
 
 function App() {
   return (
@@ -38,6 +40,8 @@ function App() {
                   element={<CreateBranch />} // Make sure to import CreateBranch component
                 />
                 <Route path="/branches/:id/update" element={<UpdateBranch />} />
+                <Route path="/admin/create-main-category" element={<CreateCategory />} />
+                  <Route path="/admin/create-sub-category" element={<CreateSubCategory />} />
               </Route>
 
               
