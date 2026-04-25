@@ -10,6 +10,7 @@ import ResetPassword from "./page/RestPassword";
 import CreateBranch from "./page/CreateBranch";
 import ChangePassword from "./page/ChangePassword";
 import Profile from "./page/Profile";
+import UpdateBranch from "./page/UpdateBranch";
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
                   path="/admin/create-branch"
                   element={<CreateBranch />} // Make sure to import CreateBranch component
                 />
+                <Route path="/branches/:id/update" element={<UpdateBranch />} />
               </Route>
 
               

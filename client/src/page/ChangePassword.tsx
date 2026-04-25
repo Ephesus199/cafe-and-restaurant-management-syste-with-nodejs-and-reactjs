@@ -56,7 +56,9 @@ export default function ChangePassword() {
                     <input type="password" {...register("confirmNewPassword")} />
                 </div>
                 {error && <p style={{ color: "red" }}>{error}</p>}
-                <button type="submit">Change Password</button>
+                <button type="submit" disabled={changePasswordMutation.isPending}>
+                    {changePasswordMutation.isPending ? "Changing Password..." : "Change Password"}
+                </button>
             </form>
         </div>
     )
