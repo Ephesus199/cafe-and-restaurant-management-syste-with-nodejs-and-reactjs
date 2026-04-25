@@ -5,6 +5,7 @@ import { AuthProvider } from "./context/authContext"
 import ProtectedRoute from "./component/ProtectedRoute"
 import CreateUser from "./page/CreateUser"
 import SuperAdminDashboard from "./page/SuperAdminDashboard"
+import ForgotPassword from "./page/ForgotPassword"
 
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
             
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route
                 
                 element={

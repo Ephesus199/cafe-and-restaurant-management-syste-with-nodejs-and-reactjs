@@ -22,7 +22,7 @@ const transporter = nodemailer.createTransport({
 
 
 export const sendResetEmail = async (email: string, resetToken: string) => {
-  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+  const resetUrl = `${process.env.FRONTEND_URL||'http://localhost:5173'}/reset-password?token=${resetToken}`;
 
   await transporter.sendMail({
     from: `"Cafe System" <${process.env.EMAIL_USER}>`,

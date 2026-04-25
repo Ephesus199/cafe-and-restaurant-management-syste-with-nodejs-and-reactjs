@@ -2,6 +2,7 @@
 import { useForm } from "react-hook-form";
 import type { SubmitHandler } from "react-hook-form";
 import { useAuth } from "../hooks/auth/useAuthContext";
+import { Link } from "react-router-dom";
 
 
 type inputType = { email?: string; username?: string; password: string };
@@ -46,6 +47,8 @@ export function Login() {
         </button>
         {error && <p className="text-red-500 text-sm">{error}</p>}
       </form>
+
+      <Link to="/forgot-password">Forgot Password?</Link>
     </div>
   );
 }
