@@ -8,7 +8,7 @@ import { AuthContext, type AuthContextType } from "../hooks/auth/useAuthContext"
 import { AxiosError } from "axios";
 
 type ErrorResponse = {
-  success: false;
+  success: boolean;
   message: string;
 };
 

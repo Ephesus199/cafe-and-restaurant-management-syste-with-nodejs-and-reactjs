@@ -8,6 +8,8 @@ import SuperAdminDashboard from "./page/SuperAdminDashboard";
 import ForgotPassword from "./page/ForgotPassword";
 import ResetPassword from "./page/RestPassword";
 import CreateBranch from "./page/CreateBranch";
+import ChangePassword from "./page/ChangePassword";
+import Profile from "./page/Profile";
 
 function App() {
   return (
@@ -45,7 +47,13 @@ function App() {
                   />
                 }
               >
+
                 <Route path="/create-user" element={<CreateUser />} />
+              </Route>
+
+              <Route element={<ProtectedRoute allowedRoles={["super_admin", "branch_admin", "store_manager", "waiter", "cashier", "staff"]} />}>
+                <Route path="/profile/:id" element={<Profile />} />
+                <Route path="/profile/:id/change-password" element={<ChangePassword />} />
               </Route>
             </Routes>
           </AuthProvider>

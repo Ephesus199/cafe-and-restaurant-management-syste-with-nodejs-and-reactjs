@@ -16,10 +16,11 @@ export const validate = (schema: ZodObject) => {
           field: err.path.join("."),
           message: err.message,
         }));
+        console.log("Formatted validation errors:", formattedErrors);
 
         return res.status(400).json({
           success: false,
-          message: "Validation failed for the request data",
+          message: formattedErrors.map((e) => `${e.message}`).join("; "),
           errors: formattedErrors,
         });
       }

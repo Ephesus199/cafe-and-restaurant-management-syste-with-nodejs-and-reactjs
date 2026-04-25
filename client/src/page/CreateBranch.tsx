@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import api from "../api/axios";
+import { useNavigate } from "react-router";
 
 interface branchInfo{
     name: string;
@@ -16,12 +17,17 @@ interface branchInfo{
 }
 export default function CreateBranch() {
     const { register, handleSubmit } = useForm<branchInfo>();
+    const navigate = useNavigate()
 
     const createBranchMutation = useMutation({
         mutationFn: async (data: branchInfo) => {
             // Implement create branch API call here
                 await api.post("/branches", data);
             console.log("Creating branch with data:", data);
+        },
+        onSuccess: () => {
+            console.log("Branch created successfully");
+            navigate('/admin/dashboard', { replace: true });
         }
     });
 
