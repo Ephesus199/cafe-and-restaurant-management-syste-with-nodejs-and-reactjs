@@ -21,6 +21,8 @@ import {
   createMenuItemSchema,
   updateMenuItemSchema,
 } from "../validation/index";
+import { parse } from "node:path";
+import { parseMenuItemFormData } from "../middleware/parseFormData";
 
 const router = Router();
 
@@ -58,6 +60,7 @@ router.post(
 router.post(
   "/items",
   authorizeRoles("super_admin", "branch_admin"),
+  parseMenuItemFormData,
   validate(createMenuItemSchema),
   createMenuItem,
 );

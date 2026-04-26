@@ -123,7 +123,7 @@ export const createMenuItemSchema = z.object({
   translations: z
     .array(
       z.object({
-        languageCode: z.enum(["en", "am", "ar"]),
+        languageCode: z.enum(["en", "am", "oro"]),
         name: z.string().min(3, "Translation name must be at least 3 characters").max(200, "Translation name cannot exceed 200 characters"),
         description: z.string().optional(),
       }),
@@ -132,12 +132,12 @@ export const createMenuItemSchema = z.object({
 
   price: z.coerce.number().positive("Price must be greater than 0"),
 
-  imageUrl: z.string().url("Invalid image URL").optional(),
+  // imageUrl: z.string().url("Invalid image URL").optional(),
 
-  description: z
-    .string()
-    .max(1000, "Description cannot exceed 1000 characters")
-    .optional(),
+  // description: z
+  //   .string()
+  //   .max(1000, "Description cannot exceed 1000 characters")
+  //   .optional(),
 
   calories: z
     .number()

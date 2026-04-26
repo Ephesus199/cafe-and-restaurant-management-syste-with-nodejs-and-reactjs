@@ -36,6 +36,7 @@ export default function SuperAdminDashboard() {
       <Link to={`/profile/${user?.id}`}>View Profile</Link>
       <Link to="/admin/create-main-category">Create Main Category</Link>
       <Link to="/admin/create-sub-category">Create Sub-Category</Link>
+      <Link to="/admin/create-menu-item">Create Menu Item</Link>
       <select value={value} onChange={handleBranchSelect}>
         <option value="">Update Branch</option>
         {

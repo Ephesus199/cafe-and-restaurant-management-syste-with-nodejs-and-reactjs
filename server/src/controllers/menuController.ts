@@ -12,6 +12,7 @@ import {
 import { CloudinaryService, } from "../utils/cloudinaryServices";
 import type { UploadedFile } from "express-fileupload";
 import type fileUpload from "express-fileupload";
+import { is } from "zod/locales";
 
 // ==================== MAIN CATEGORIES ====================
 export const createMainCategory = async (req: AuthRequest, res: Response) => {
@@ -154,11 +155,14 @@ export const getSubcategories = async (req: Request, res: Response) => {
 // ==================== MENU ITEMS ====================
 export const createMenuItem = async (req: AuthRequest, res: Response) => {
   try {
+    console.log("Received menu item creation request with body:", req.body);
+
     const data = createMenuItemSchema.parse(req.body);
-    console.log("Creating menu item with data:", data);
+   
     const { translations } = data;
     const creator = req.user!;
     const imageFile = req.files?.image as UploadedFile | undefined;
+    console.log("Received file:", req.files);
     console.log("image file: ", imageFile);
 
     let imageUrl: string | null = null;
@@ -179,7 +183,7 @@ export const createMenuItem = async (req: AuthRequest, res: Response) => {
         imageUrl,
         description: englishTranslation?.description || "",
         subcategoryId: data.subcategoryId,
-        defaultAvailable: data.defaultAvailable,
+        defaultAvailable: isBranchAdmin ? false : true, // Branch Admin items default to unavailable
         createdBy: req.user!.id,
 
         translations: {
@@ -210,7 +214,7 @@ export const createMenuItem = async (req: AuthRequest, res: Response) => {
       data: menuItem,
     });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success: false, message: "Failed to create menu item: " + error.message });
   }
 };
 export const getMenuItems = async (req: Request, res: Response) => {

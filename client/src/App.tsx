@@ -13,6 +13,8 @@ import Profile from "./page/Profile";
 import UpdateBranch from "./page/UpdateBranch";
 import CreateCategory from "./page/CreateCategory";
 import CreateSubCategory from "./page/CreateSubCategory";
+import CreateMenuItem from "./page/CreateMenuItem";
+import BranchDashboard from "./page/BranchDashboard";
 
 function App() {
   return (
@@ -33,6 +35,11 @@ function App() {
                 />
               </Route>
               <Route
+                element={<ProtectedRoute allowedRoles={["branch_admin"]} />}
+              >
+                <Route path="/branch/dashboard" element={<BranchDashboard />} />
+              </Route>
+              <Route
                 element={<ProtectedRoute allowedRoles={["super_admin"]} />}
               >
                 <Route
@@ -40,11 +47,15 @@ function App() {
                   element={<CreateBranch />} // Make sure to import CreateBranch component
                 />
                 <Route path="/branches/:id/update" element={<UpdateBranch />} />
-                <Route path="/admin/create-main-category" element={<CreateCategory />} />
-                  <Route path="/admin/create-sub-category" element={<CreateSubCategory />} />
+                <Route
+                  path="/admin/create-main-category"
+                  element={<CreateCategory />}
+                />
+                <Route
+                  path="/admin/create-sub-category"
+                  element={<CreateSubCategory />}
+                />
               </Route>
-
-              
 
               <Route
                 element={
@@ -53,13 +64,32 @@ function App() {
                   />
                 }
               >
-
                 <Route path="/create-user" element={<CreateUser />} />
+                <Route
+                  path="/admin/create-menu-item"
+                  element={<CreateMenuItem />}
+                />
               </Route>
 
-              <Route element={<ProtectedRoute allowedRoles={["super_admin", "branch_admin", "store_manager", "waiter", "cashier", "staff"]} />}>
+              <Route
+                element={
+                  <ProtectedRoute
+                    allowedRoles={[
+                      "super_admin",
+                      "branch_admin",
+                      "store_manager",
+                      "waiter",
+                      "cashier",
+                      "staff",
+                    ]}
+                  />
+                }
+              >
                 <Route path="/profile/:id" element={<Profile />} />
-                <Route path="/profile/:id/change-password" element={<ChangePassword />} />
+                <Route
+                  path="/profile/:id/change-password"
+                  element={<ChangePassword />}
+                />
               </Route>
             </Routes>
           </AuthProvider>

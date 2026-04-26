@@ -1,74 +1,174 @@
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import api from "../api/axios";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
-interface SubCategoryDetails {
+const languages = [
+  { code: "en", name: "English" },
+  { code: "am", name: "አማርኛ (Amharic)" },
+  { code: "oro", name: "Oromifa" },
+];
+
+type MainCategory = {
+  id: string;
+  name: string;
+};
+
+type FormData = {
+  displayOrder: number;
+  mainCategoryId: string;
+  translations: {
+    languageCode: string;
     name: string;
-    displayOrder: number;
-    mainCategoryId: string;
-}
+  }[];
+};
+
 export default function CreateSubCategory() {
-    const { register, handleSubmit } = useForm<SubCategoryDetails>();
-    const navigate = useNavigate();
-    const getMainCategories = useQuery({
-        queryKey: ["mainCategories"],
-        queryFn: async () => {
-            const res = await api.get("/menu/categories");
-            return res.data.data;
-        }
-    });
+  const navigate = useNavigate();
 
-        const createSubCategoryMutation = useMutation({
-          mutationFn: async (data: SubCategoryDetails) => {
-            await api.post("/menu/subcategories", data);
-            console.log("Creating sub-category with data:", data);
-          },
-          onSuccess: () => {
-            console.log("Sub-Category created successfully");
-            navigate("/admin/dashboard", { replace: true });
-          },
-          onError: (error) => {
-            console.error("Failed to create sub-category:", error);
-          },
-        });
-    function onSubmit(data: SubCategoryDetails) {
-        console.log("Create Sub-Category form submitted with data:", data);
-        // Implement create sub-category logic here
-        const finalData = { ...data, displayOrder: Number(data.displayOrder) };
-        createSubCategoryMutation.mutate(finalData);
-    }
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<FormData>({
+    defaultValues: {
+      displayOrder: 0,
+      mainCategoryId: "",
+      translations: languages.map((lang) => ({
+        languageCode: lang.code,
+        name: "",
+      })),
+    },
+  });
 
-    if (getMainCategories.isLoading) {
-        return (
-            <div>Loading...</div>
-        )
-    }
-    return (
+  const { fields } = useFieldArray({
+    control,
+    name: "translations",
+  });
+
+  // Fetch Main Categories
+  const getMainCategories = useQuery({
+    queryKey: ["mainCategories"],
+    queryFn: async () => {
+      const res = await api.get("/menu/categories");
+      return res.data.data as MainCategory[];
+    },
+  });
+
+  // Create Mutation
+  const createSubCategoryMutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      return api.post("/menu/subcategories", {
+        displayOrder: data.displayOrder,
+        mainCategoryId: data.mainCategoryId,
+        translations: data.translations.filter((t) => t.name.trim() !== ""),
+      });
+    },
+
+    onSuccess: () => {
+      reset();
+      navigate("/admin/dashboard", {
+        replace: true,
+      });
+    },
+
+    onError: (error) => {
+      console.error(error);
+    },
+  });
+
+  const onSubmit = (data: FormData) => {
+    createSubCategoryMutation.mutate(data);
+  };
+
+  if (getMainCategories.isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6">Create Sub-Category</h1>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Main Category */}
         <div>
-            <h1>Create Sub-Category Page</h1>
-            <form onSubmit={handleSubmit(onSubmit)}>
-                <div>
-                    <label>Sub-Category Name:</label>
-                    <input type="text" {...register("name")} />
-                </div>
-                <div>
-                    <label>Display Order:</label>
-                    <input type="number" {...register("displayOrder")} />
-                </div>
-                <div>
-                    <label>Main Category:</label>
-                    <select {...register("mainCategoryId")}>
-                        <option value="">Select a main category</option>
-                        {getMainCategories.data?.map((category: { id: string; name: string }) => (
-                            <option key={category.id} value={category.id}>
-                                {category.name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <button type="submit">{createSubCategoryMutation.isPending ? "Creating..." : "Create Sub-Category"}</button>
-            </form>
+          <label className="block mb-2 font-medium">Main Category</label>
+
+          <select
+            {...register("mainCategoryId", {
+              required: "Select category",
+            })}
+            className="w-full border p-3 rounded-lg"
+          >
+            <option value="">Select Main Category</option>
+
+            {getMainCategories.data?.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+
+          {errors.mainCategoryId && (
+            <p className="text-red-500 text-sm mt-1">
+              {errors.mainCategoryId.message}
+            </p>
+          )}
         </div>
-    )
+
+        {/* Display Order */}
+        <div>
+          <label className="block mb-2 font-medium">Display Order</label>
+
+          <input
+            type="number"
+            {...register("displayOrder", {
+              valueAsNumber: true,
+              required: "Display order required",
+            })}
+            className="w-full border p-3 rounded-lg"
+          />
+        </div>
+
+        {/* Translations */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Translations</h2>
+
+          {fields.map((field, index) => (
+            <div key={field.id} className="border p-4 rounded-lg">
+              <label className="block mb-2 font-medium">
+                {languages[index].name}
+              </label>
+
+              <input
+                type="text"
+                {...register(`translations.${index}.name`)}
+                placeholder={`Enter name in ${languages[index].name}`}
+                className="w-full border p-3 rounded-lg"
+              />
+
+              {/* Hidden languageCode */}
+              <input
+                type="hidden"
+                {...register(`translations.${index}.languageCode`)}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={createSubCategoryMutation.isPending}
+          className="w-full bg-blue-600 text-white py-3 rounded-lg"
+        >
+          {createSubCategoryMutation.isPending
+            ? "Creating..."
+            : "Create Sub-Category"}
+        </button>
+      </form>
+    </div>
+  );
 }
