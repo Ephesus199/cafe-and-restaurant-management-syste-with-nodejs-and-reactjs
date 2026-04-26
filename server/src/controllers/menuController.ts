@@ -65,18 +65,52 @@ export const createMainCategory = async (req: AuthRequest, res: Response) => {
 
 export const getMainCategories = async (req: Request, res: Response) => {
   try {
+    const languageCode = (req.query.lang as string)?.toLowerCase() || "en"; // Default to English
+
     const categories = await prisma.mainCategory.findMany({
       where: { deletedAt: null },
       orderBy: { displayOrder: "asc" },
       select: {
         id: true,
-        name: true,
         displayOrder: true,
-      }
+
+        // Get translations for requested language with English fallback
+        translations: {
+          where: {
+            languageCode: { in: [languageCode, "en"] },
+          },
+          select: {
+            languageCode: true,
+            name: true,
+          },
+        },
+      },
     });
 
-    res.json({ success: true, data: categories });
+    // Transform the data to return clean structure with selected language
+    const result = categories.map((category) => {
+      // Find translation for requested language, fallback to English
+      const translation =
+        category.translations.find((t) => t.languageCode === languageCode) ||
+        category.translations.find((t) => t.languageCode === "en");
+
+      return {
+        id: category.id,
+        name: translation?.name || "Untitled Category", // fallback
+        displayOrder: category.displayOrder,
+      };
+    });
+
+    res.json({
+      success: true,
+      data: result,
+      meta: {
+        language: languageCode,
+        total: result.length,
+      },
+    });
   } catch (error) {
+    console.error("Error fetching main categories:", error);
     res
       .status(500)
       .json({ success: false, message: "Failed to fetch main categories" });
@@ -120,32 +154,87 @@ export const createSubcategory = async (req: AuthRequest, res: Response) => {
 
 export const getSubcategories = async (req: Request, res: Response) => {
   try {
+    const languageCode = (req.query.lang as string)?.toLowerCase() || "en"; // Default to English
+
     const subcategories = await prisma.subcategory.findMany({
       where: { deletedAt: null },
-      
+
       select: {
         id: true,
-        name: true,
         displayOrder: true,
+
+        // Subcategory translations (requested language + English fallback)
+        translations: {
+          where: {
+            languageCode: { in: [languageCode, "en"] },
+          },
+          select: {
+            languageCode: true,
+            name: true,
+          },
+        },
+
+        // Main Category with translations
         mainCategory: {
           select: {
             id: true,
-            name: true,
             displayOrder: true,
-          }
-        }
-       
-     },
+
+            translations: {
+              where: {
+                languageCode: { in: [languageCode, "en"] },
+              },
+              select: {
+                languageCode: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+
       orderBy: [
         { mainCategory: { displayOrder: "asc" } },
         { displayOrder: "asc" },
-
       ],
-   
     });
 
-    res.json({ success: true, data: subcategories });
+    // Transform data to clean structure with selected language
+    const result = subcategories.map((sub) => {
+      // Subcategory name: requested language → English fallback
+      const subTranslation =
+        sub.translations.find((t) => t.languageCode === languageCode) ||
+        sub.translations.find((t) => t.languageCode === "en");
+
+      // Main Category name: requested language → English fallback
+      const mainCatTranslation =
+        sub.mainCategory.translations.find(
+          (t) => t.languageCode === languageCode,
+        ) || sub.mainCategory.translations.find((t) => t.languageCode === "en");
+
+      return {
+        id: sub.id,
+        name: subTranslation?.name || "Untitled Subcategory",
+        displayOrder: sub.displayOrder,
+
+        mainCategory: {
+          id: sub.mainCategory.id,
+          name: mainCatTranslation?.name || "Untitled Category",
+          displayOrder: sub.mainCategory.displayOrder,
+        },
+      };
+    });
+
+    res.json({
+      success: true,
+      data: result,
+      meta: {
+        language: languageCode,
+        total: result.length,
+      },
+    });
   } catch (error) {
+    console.error("Error fetching subcategories:", error);
     res
       .status(500)
       .json({ success: false, message: "Failed to fetch subcategories" });
@@ -219,182 +308,438 @@ export const createMenuItem = async (req: AuthRequest, res: Response) => {
 };
 export const getMenuItems = async (req: Request, res: Response) => {
   try {
+    const languageCode = (req.query.lang as string) || "en"; // Default to English
+
     const items = await prisma.menuItem.findMany({
       where: { deletedAt: null },
       select: {
         id: true,
-        name: true,
         price: true,
         imageUrl: true,
-        description: true,
         calories: true,
         preparationTime: true,
+        defaultAvailable: true,
+        availabilityExceptions: {
+          select: {
+            branchId: true,
+          }
+        },
+
+        // Get translation for the requested language, fallback to English
+        translations: {
+          where: {
+            languageCode: { in: [languageCode, "en"] },
+          },
+          select: {
+            languageCode: true,
+            name: true,
+            description: true,
+          },
+        },
+
         subcategory: {
           select: {
             id: true,
-            name: true,
+            translations: {
+              where: {
+                languageCode: { in: [languageCode, "en"] },
+              },
+              select: {
+                languageCode: true,
+                name: true,
+              },
+            },
             mainCategory: {
               select: {
                 id: true,
-                name: true,              }
-            }
-          }
-        }
+                translations: {
+                  where: {
+                    languageCode: { in: [languageCode, "en"] },
+                  },
+                  select: {
+                    languageCode: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
-      orderBy: { name: "asc" },
+      orderBy: [
+        { subcategory: { mainCategory: { displayOrder: "asc" } } },
+        { subcategory: { displayOrder: "asc" } },
+        { name: "asc" }, // fallback sort
+      ],
     });
 
-    res.json({ success: true, data: items });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to fetch menu items" });
-  }
-};
+    console.log("Fetched menu items with translations:", items);
 
-export const getMenuForBranch = async (req: AuthRequest, res: Response) => {
-  try {
-      let { branchId } = req.params;
+    // Transform the data to return clean structure with selected language
+    const transformedItems = items.map((item) => {
+      // Find translation for requested language, fallback to English
+      const itemTranslation =
+        item.translations.find((t) => t.languageCode === languageCode) ||
+        item.translations.find((t) => t.languageCode === "en");
 
-      if (Array.isArray(branchId)) {
-        branchId = branchId[0];
-      }
+      const subcategoryTranslation =
+        item.subcategory.translations.find(
+          (t) => t.languageCode === languageCode,
+        ) || item.subcategory.translations.find((t) => t.languageCode === "en");
 
-      if(!branchId) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Branch ID is required" });
-      }
-      
+      const mainCategoryTranslation =
+        item.subcategory.mainCategory.translations.find(
+          (t) => t.languageCode === languageCode,
+        ) ||
+        item.subcategory.mainCategory.translations.find(
+          (t) => t.languageCode === "en",
+        );
 
-   const menuItems = await prisma.menuItem.findMany({
-     where: { deletedAt: null },
-
-     select: {
-       id: true,
-       name: true,
-       price: true,
-       description: true,
-       imageUrl: true,
-       displayOrder: true,
-       defaultAvailable: true,
-       isAvailable: true,
-       // Add any other menuItem fields you need
-       // sku: true,
-       // calories: true,
-
-       // Nested relation: subcategory + mainCategory
-       subcategory: {
-         select: {
-           id: true,
-           name: true,
-           displayOrder: true,
-           // slug: true,
-
-           mainCategory: {
-             select: {
-               id: true,
-               name: true,
-               displayOrder: true,
-               // icon: true,
-               // color: true,
-             },
-           },
-         },
-       },
-
-       // Availability exceptions for specific branch
-       availabilityExceptions: {
-         where: { branchId }, // filter by branch
-         select: {
-           id: true,
-           isAvailable: true,
-           // startDate: true,
-           // endDate: true,
-           // reason: true,
-         },
-       },
-     },
-
-     // Optional: Order the results
-     orderBy: [
-       { subcategory: { mainCategory: { displayOrder: "asc" } } },
-       { subcategory: { displayOrder: "asc" } },
-       { displayOrder: "asc" },
-     ],
-   });
-
-
-    const result = menuItems.map((item) => {
-      const exception = item.availabilityExceptions[0];
-      console.log("exception:", exception);
       return {
-        ...item,
-        availabilityExceptions: undefined,
-        isAvailable: exception ? exception.isAvailable : item.defaultAvailable,
+        id: item.id,
+        name: itemTranslation?.name , // fallback to main table name
+        price: item.price,
+        imageUrl: item.imageUrl,
+        description: itemTranslation?.description || "",
+        calories: item.calories,
+        preparationTime: item.preparationTime,
+
+        subcategory: {
+          id: item.subcategory.id,
+          name: subcategoryTranslation?.name || "",
+        },
+
+        mainCategory: {
+          id: item.subcategory.mainCategory.id,
+          name: mainCategoryTranslation?.name || "",
+        },
+
+        // Optional: return all translations if needed
+        // translations: item.translations
       };
     });
 
-    console.log("Menu for branch:", result);
+    res.json({
+      success: true,
+      data: transformedItems,
+      meta: {
+        language: languageCode,
+        total: transformedItems.length,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch menu items",
+    });
+  }
+};
+export const getAvailableMenuForBranch = async (req: AuthRequest, res: Response) => {
+  try {
+    let { branchId } = req.params;
+    const languageCode = (req.query.lang as string) || "am"; // Default: English
+    console.log("request Query: ", req.query)
+
+    if (Array.isArray(branchId)) {
+      branchId = branchId[0];
+    }
+
+    if (!branchId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Branch ID is required" });
+    }
+
+    const menuItems = await prisma.menuItem.findMany({
+      where: { deletedAt: null },
+
+      select: {
+        id: true,
+        price: true,
+        imageUrl: true,
+        calories: true,
+        preparationTime: true,
+        defaultAvailable: true,
+
+        // Translations for requested language (with English fallback)
+        translations: {
+          where: {
+            languageCode: { in: [languageCode] },
+          },
+          select: {
+            languageCode: true,
+            name: true,
+            description: true,
+          },
+        },
+
+        // Subcategory with translations
+        subcategory: {
+          select: {
+            id: true,
+            displayOrder: true,
+
+            translations: {
+              where: {
+                languageCode: { in: [languageCode, "en"] },
+              },
+              select: {
+                languageCode: true,
+                name: true,
+              },
+            },
+
+            // Main Category with translations
+            mainCategory: {
+              select: {
+                id: true,
+                displayOrder: true,
+
+                translations: {
+                  where: {
+                    languageCode: { in: [languageCode, "en"] },
+                  },
+                  select: {
+                    languageCode: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+
+        // Availability exceptions for this specific branch
+        availabilityExceptions: {
+          where: { branchId },
+          select: {
+            isAvailable: true,
+          },
+        },
+      },
+
+      orderBy: [
+        { subcategory: { mainCategory: { displayOrder: "asc" } } },
+        { subcategory: { displayOrder: "asc" } },
+        { name: "asc" }, // fallback sort
+      ],
+    });
+
+    // Transform the data into clean frontend-friendly structure
+    const result = menuItems.map((item) => {
+      // Get translation for requested language, fallback to English
+      const itemTranslation =
+        item.translations.find((t) => t.languageCode === languageCode) ||
+        item.translations.find((t) => t.languageCode === "en");
+
+      const subcategoryTranslation =
+        item.subcategory.translations.find(
+          (t) => t.languageCode === languageCode,
+        ) || item.subcategory.translations.find((t) => t.languageCode === "en");
+
+      const mainCategoryTranslation =
+        item.subcategory.mainCategory.translations.find(
+          (t) => t.languageCode === languageCode,
+        ) ||
+        item.subcategory.mainCategory.translations.find(
+          (t) => t.languageCode === "en",
+        );
+
+      const exception = item.availabilityExceptions[0];
+
+      return {
+        id: item.id,
+        name: itemTranslation?.name , // fallback to main name
+        price: item.price,
+        imageUrl: item.imageUrl,
+        description: itemTranslation?.description || "",
+        calories: item.calories,
+        preparationTime: item.preparationTime,
+        defaultAvailable: item.defaultAvailable,
+        isAvailable: exception ? exception.isAvailable : item.defaultAvailable,
+
+        subcategory: {
+          id: item.subcategory.id,
+          name: subcategoryTranslation?.name || "",
+          displayOrder: item.subcategory.displayOrder,
+        },
+
+        mainCategory: {
+          id: item.subcategory.mainCategory.id,
+          name: mainCategoryTranslation?.name || "",
+          displayOrder: item.subcategory.mainCategory.displayOrder,
+        },
+      };
+    });
+
+    const availableItems = result.filter(item => item.isAvailable);
+    console.log("Available items: ", availableItems);
 
     res.json({
       success: true,
-      data: result,
+      data: availableItems,
+      meta: {
+        branchId,
+        language: languageCode,
+        totalItems: availableItems.length,
+      },
     });
   } catch (error) {
+    console.error("Error fetching menu for branch:", error);
     res
       .status(500)
       .json({ success: false, message: "Failed to fetch branch menu" });
   }
 };
 
-export const getAvailableMenuForBranch = async (req: AuthRequest, res: Response) => {
+export const getMenuForBranch = async (req: AuthRequest, res: Response) => {
   try {
-      let { branchId } = req.params;
+    let { branchId } = req.params;
+    const languageCode = (req.query.lang as string)?.toLowerCase() || "en"; // Default to English
 
-      if (Array.isArray(branchId)) {
-        branchId = branchId[0];
-      }
+    if (Array.isArray(branchId)) {
+      branchId = branchId[0];
+    }
 
-      if(!branchId) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Branch ID is required" });
-      }
-      
+    if (!branchId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Branch ID is required" });
+    }
 
     const menuItems = await prisma.menuItem.findMany({
       where: { deletedAt: null },
-      include: {
-        subcategory: {
-          include: {
-            mainCategory: true,
+
+      select: {
+        id: true,
+        price: true,
+        imageUrl: true,
+        calories: true,
+        preparationTime: true,
+        defaultAvailable: true,
+
+        // Get translations for requested language + English fallback
+        translations: {
+          where: {
+            languageCode: { in: [languageCode, "en"] },
+          },
+          select: {
+            languageCode: true,
+            name: true,
+            description: true,
           },
         },
+
+        // Subcategory with translations
+        subcategory: {
+          select: {
+            id: true,
+            displayOrder: true,
+
+            translations: {
+              where: {
+                languageCode: { in: [languageCode, "en"] },
+              },
+              select: {
+                languageCode: true,
+                name: true,
+              },
+            },
+
+            mainCategory: {
+              select: {
+                id: true,
+                displayOrder: true,
+
+                translations: {
+                  where: {
+                    languageCode: { in: [languageCode, "en"] },
+                  },
+                  select: {
+                    languageCode: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+
+        // Branch-specific availability
         availabilityExceptions: {
           where: { branchId },
+          select: {
+            isAvailable: true,
+          },
         },
       },
+
+      orderBy: [
+        { subcategory: { mainCategory: { displayOrder: "asc" } } },
+        { subcategory: { displayOrder: "asc" } },
+        { name: "asc" },
+      ],
     });
 
-
+    // Transform data to clean structure with selected language
     const result = menuItems.map((item) => {
+      // Priority: requested language → English → fallback to main table name
+      const itemTranslation =
+        item.translations.find((t) => t.languageCode === languageCode) ||
+        item.translations.find((t) => t.languageCode === "en");
+
+      const subcategoryTranslation =
+        item.subcategory.translations.find(
+          (t) => t.languageCode === languageCode,
+        ) || item.subcategory.translations.find((t) => t.languageCode === "en");
+
+      const mainCategoryTranslation =
+        item.subcategory.mainCategory.translations.find(
+          (t) => t.languageCode === languageCode,
+        ) ||
+        item.subcategory.mainCategory.translations.find(
+          (t) => t.languageCode === "en",
+        );
+
       const exception = item.availabilityExceptions[0];
-      console.log("exception:", exception);
+
       return {
-        ...item,
-        availabilityExceptions: undefined,
+        id: item.id,
+        name: itemTranslation?.name  || "Untitled Item",
+        price: item.price,
+        imageUrl: item.imageUrl,
+        description: itemTranslation?.description || "",
+        calories: item.calories,
+        preparationTime: item.preparationTime,
+        defaultAvailable: item.defaultAvailable,
         isAvailable: exception ? exception.isAvailable : item.defaultAvailable,
+
+        subcategory: {
+          id: item.subcategory.id,
+          name: subcategoryTranslation?.name || "Untitled Subcategory",
+          displayOrder: item.subcategory.displayOrder,
+        },
+
+        mainCategory: {
+          id: item.subcategory.mainCategory.id,
+          name: mainCategoryTranslation?.name || "Untitled Category",
+          displayOrder: item.subcategory.mainCategory.displayOrder,
+        },
       };
     });
 
-    const finalavailableItems = result.filter(item => item.isAvailable);
-
     res.json({
       success: true,
-      data: finalavailableItems,
+      data: result,
+      meta: {
+        branchId,
+        language: languageCode,
+        totalItems: result.length,
+      },
     });
   } catch (error) {
+    console.error("Error fetching menu for branch:", error);
     res
       .status(500)
       .json({ success: false, message: "Failed to fetch branch menu" });

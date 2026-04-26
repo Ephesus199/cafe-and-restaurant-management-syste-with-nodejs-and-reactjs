@@ -15,6 +15,7 @@ import CreateCategory from "./page/CreateCategory";
 import CreateSubCategory from "./page/CreateSubCategory";
 import CreateMenuItem from "./page/CreateMenuItem";
 import BranchDashboard from "./page/BranchDashboard";
+import Menu from "./page/Menu";
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
           <AuthProvider>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/menu/:branchId" element={<Menu />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route

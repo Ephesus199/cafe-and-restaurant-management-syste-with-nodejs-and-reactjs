@@ -13,6 +13,7 @@ import {
   setDailySpecial,
   getDailySpecials,
   getAvailableMenuForBranch,
+
 } from "../controllers/menuController";
 import { validate } from "../middleware/validateMiddleware";
 import {
@@ -28,6 +29,7 @@ const router = Router();
 
 router.get("/categories", getMainCategories);
 router.get("/subcategories", getSubcategories);
+router.get("/items", getMenuItems);
 
 
 router.get("/branches/:branchId/available-menu", getAvailableMenuForBranch);

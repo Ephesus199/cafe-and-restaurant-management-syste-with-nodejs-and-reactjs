@@ -104,7 +104,7 @@ export const createSubcategorySchema = z.object({
   translations: z
     .array(
       z.object({
-        languageCode: z.enum(["en", "am", "ar"]),
+        languageCode: z.enum(["en", "am", "oro"]),
         name: z.string().min(2, "Translation name must be at least 2 characters").max(100, "Translation name cannot exceed 100 characters"  ),
       }),
     )

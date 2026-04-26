@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import MenuControl from "./MenuControl";
 
 export default function BranchDashboard() {
     const location = useLocation();
@@ -10,6 +11,7 @@ export default function BranchDashboard() {
           <Link to="/admin/create-menu-item" state={{from:location.pathname}} className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600">
             Create Menu Item
           </Link>
+          <MenuControl />
     </div>
   );
 }
