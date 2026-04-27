@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 type BranchPrivileges = {
   canEditName: boolean;
@@ -22,6 +23,13 @@ type Branch = {
 
 export default function SuperAdminDashboard() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [pendingToggleBranchId, setPendingToggleBranchId] = useState<string | null>(
+    null,
+  );
+  const [pendingDeleteBranchId, setPendingDeleteBranchId] = useState<string | null>(
+    null,
+  );
   const getBranches = useQuery({
     queryKey: ["branches"],
     queryFn: async () => {
@@ -30,6 +38,65 @@ export default function SuperAdminDashboard() {
         throw new Error(res.data.message);
       }
       return res.data.data as Branch[];
+    },
+    refetchInterval:3000
+  });
+
+  const toggleBranchStatusMutation = useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      await api.put(`/branches/${id}`, { isActive });
+    },
+    onMutate: async ({ id, isActive }) => {
+      setPendingToggleBranchId(id);
+      await queryClient.cancelQueries({ queryKey: ["branches"] });
+
+      const previousBranches = queryClient.getQueryData<Branch[]>(["branches"]);
+      queryClient.setQueryData<Branch[]>(["branches"], (oldBranches = []) =>
+        oldBranches.map((branch) =>
+          branch.id === id ? { ...branch, isActive } : branch,
+        ),
+      );
+
+      return { previousBranches };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousBranches) {
+        queryClient.setQueryData(["branches"], context.previousBranches);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["branches"] });
+    },
+    onSettled: () => {
+      setPendingToggleBranchId(null);
+    },
+  });
+
+  const deleteBranchMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/branches/${id}`);
+    },
+    onMutate: async (id) => {
+      setPendingDeleteBranchId(id);
+      await queryClient.cancelQueries({ queryKey: ["branches"] });
+
+      const previousBranches = queryClient.getQueryData<Branch[]>(["branches"]);
+      queryClient.setQueryData<Branch[]>(["branches"], (oldBranches = []) =>
+        oldBranches.filter((branch) => branch.id !== id),
+      );
+
+      return { previousBranches };
+    },
+    onError: (_error, _id, context) => {
+      if (context?.previousBranches) {
+        queryClient.setQueryData(["branches"], context.previousBranches);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["branches"] });
+    },
+    onSettled: () => {
+      setPendingDeleteBranchId(null);
     },
   });
 
@@ -72,6 +139,7 @@ export default function SuperAdminDashboard() {
               <th className="border border-gray-300 px-4 py-2 text-left">Active</th>
               <th className="border border-gray-300 px-4 py-2 text-left">Privileges</th>
               <th className="border border-gray-300 px-4 py-2 text-left">Edit</th>
+              <th className="border border-gray-300 px-4 py-2 text-left">Delete</th>
             </tr>
           </thead>
           <tbody>
@@ -81,7 +149,33 @@ export default function SuperAdminDashboard() {
                 <td className="border border-gray-300 px-4 py-2">{branch.address || "-"}</td>
                 <td className="border border-gray-300 px-4 py-2">{branch.phone || "-"}</td>
                 <td className="border border-gray-300 px-4 py-2">
-                  {branch.isActive ? "Yes" : "No"}
+                  {(() => {
+                    const isCurrentTogglePending = pendingToggleBranchId === branch.id;
+
+                    return (
+                  <button
+                    type="button"
+                    disabled={isCurrentTogglePending}
+                    className={`px-3 py-1 rounded text-white ${
+                      branch.isActive
+                        ? "bg-green-600 hover:bg-green-700"
+                        : "bg-gray-500 hover:bg-gray-600"
+                    } disabled:opacity-60`}
+                    onClick={() =>
+                      toggleBranchStatusMutation.mutate({
+                        id: branch.id,
+                        isActive: !branch.isActive,
+                      })
+                    }
+                  >
+                    {isCurrentTogglePending
+                      ? "Updating..."
+                      : branch.isActive
+                        ? "Active"
+                        : "Inactive"}
+                  </button>
+                    );
+                  })()}
                 </td>
                 <td className="border border-gray-300 px-4 py-2">
                   {formatPrivileges(branch.bracnhPrivileges)}
@@ -95,6 +189,22 @@ export default function SuperAdminDashboard() {
                     }
                   >
                     Edit
+                  </button>
+                </td>
+                <td className="border border-gray-300 px-4 py-2">
+                  <button
+                    type="button"
+                    disabled={pendingDeleteBranchId === branch.id}
+                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded disabled:opacity-60"
+                    onClick={() => {
+                      const shouldDelete = window.confirm(
+                        `Are you sure you want to delete ${branch.name}?`,
+                      );
+                      if (!shouldDelete) return;
+                      deleteBranchMutation.mutate(branch.id);
+                    }}
+                  >
+                    {pendingDeleteBranchId === branch.id ? "Deleting..." : "Delete"}
                   </button>
                 </td>
               </tr>
