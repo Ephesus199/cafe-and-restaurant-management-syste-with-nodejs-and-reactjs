@@ -12,6 +12,14 @@ import {
 } from "../utils/jwt";
 import { changePasswordSchema, forgotPasswordSchema, resetPasswordSchema } from "../validation";
 import { sendResetEmail } from "../utils/email";
+import { getCookieValue } from "../utils/cookies";
+
+const buildAuthCookieOptions = () => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "strict" as const,
+  path: "/",
+});
 
 // Login (Updated to return both access + refresh token)
 export const login = async (req: Request, res: Response) => {
@@ -47,12 +55,13 @@ export const login = async (req: Request, res: Response) => {
 
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
+    res.cookie("accessToken", accessToken, {
+      ...buildAuthCookieOptions(),
+      maxAge: 15 * 60 * 1000,
+    });
     res.cookie("refreshToken", refreshToken, {
-      httpOnly: true, // ← Most important
-      secure: process.env.NODE_ENV === "production", // Use HTTPS in production
-      sameSite: "strict", // Protects against CSRF
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      path: "/",
+      ...buildAuthCookieOptions(),
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     res.json({
@@ -67,8 +76,6 @@ export const login = async (req: Request, res: Response) => {
           role: user.role,
           branchId: user.managedBranchId || user.branchId,
         },
-        accessToken,
-        // refreshToken, // No need to send refresh token in response body since it's in cookie
       },
     });
   } catch (error) {
@@ -80,8 +87,7 @@ export const login = async (req: Request, res: Response) => {
 // Refresh Token
 export const refreshToken = async (req: Request, res: Response) => {
   try {
-    // const { refreshToken } = req.body;
-    const refreshToken = req.cookies.refreshToken; // Read from cookie
+    const refreshToken = getCookieValue(req, "refreshToken");
 
     if (!refreshToken) {
       return res
@@ -108,10 +114,14 @@ export const refreshToken = async (req: Request, res: Response) => {
       role: user.role,
       branchId: user.managedBranchId || user.branchId,
     });
+    res.cookie("accessToken", newAccessToken, {
+      ...buildAuthCookieOptions(),
+      maxAge: 15 * 60 * 1000,
+    });
 
     res.json({
       success: true,
-      data: { accessToken: newAccessToken },
+      data: {},
     });
   } catch (error) {
     res
@@ -165,15 +175,14 @@ export const getMe = async (req: AuthRequest, res: Response) => {
 
 // Logout (Client-side only for now - stateless JWT)
 export const logout = async (req: Request, res: Response) => {
-  // For stateless JWT, we just tell client to delete tokens
+  const cookieOptions = buildAuthCookieOptions();
+  res.clearCookie("accessToken", cookieOptions);
   res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    ...cookieOptions,
   });
   res.json({
     success: true,
-    message: "Logged out successfully. Please delete tokens from client.",
+    message: "Logged out successfully.",
   });
 };
 

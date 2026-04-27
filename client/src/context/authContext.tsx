@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const res = await api.get("/auth/me");
       return res.data.data as User;
     },
-    enabled: !!localStorage.getItem("accessToken"),
+    enabled: true,
     retry: false,
     staleTime: 1000 * 60 * 10, // 10 minutes
   });
@@ -62,8 +62,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     },
     
     onSuccess: (data) => {
-      const { user: loggedInUser, accessToken } = data.data;
-      localStorage.setItem("accessToken", accessToken);
+      const { user: loggedInUser } = data.data;
       console.log("Login successful, user data:", loggedInUser);
 
       setUser(loggedInUser);
@@ -104,22 +103,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Logout
-  const logout = () => {
-    localStorage.removeItem("accessToken");
+  const logout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch (logoutError) {
+      console.error("Logout request failed:", logoutError);
+    }
     setUser(null);
     queryClient.clear(); // Clear all cached data
     navigate("/login");
   };
 
   const value: AuthContextType = {
-    user,
+    user: userData || user,
     error: error,
     isLoading: isLoading || loginMutation.isPending,
     login,
     logout,
-    isAuthenticated: !!userData,
+    isAuthenticated: !!(userData || user),
     isPending: loginMutation.isPending,
-    role: userData?.role || null,
+    role: userData?.role || user?.role || null,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

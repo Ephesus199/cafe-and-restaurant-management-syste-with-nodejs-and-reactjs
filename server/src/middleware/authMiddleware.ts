@@ -1,6 +1,7 @@
 import type { Response, NextFunction } from "express";
 import { verifyAccessToken } from "../utils/jwt";
 import type { AuthRequest } from "../types";
+import { getCookieValue } from "../utils/cookies";
 
 export const protect = (
   req: AuthRequest,
@@ -9,17 +10,16 @@ export const protect = (
 ) => {
   try {
     const authHeader = req.headers.authorization;
+    const cookieToken = getCookieValue(req, "accessToken");
+    const bearerToken = authHeader?.startsWith("Bearer ")
+      ? authHeader.split(" ")[1]
+      : undefined;
+    const token = bearerToken || cookieToken;
 
-    if (!authHeader?.startsWith("Bearer ")) {
+    if (!token) {
       return res
         .status(401)
         .json({ message: "Access denied. No token provided." });
-    }
-
-
-    const token = authHeader.split(" ")[1];
-    if (!token) {
-      return res.status(401).json({ message: "Access denied. No token provided." });
     }
     const decoded = verifyAccessToken(token);
 
