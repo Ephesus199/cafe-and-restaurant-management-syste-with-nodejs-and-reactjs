@@ -2,7 +2,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 import api from "../api/axios";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 const languages = [
   { code: "en", name: "English" },
@@ -11,6 +11,15 @@ const languages = [
 ];
 
 type SubCategory = {
+  id: string;
+  name: string;
+  mainCategory: {
+    id: string;
+    name: string;
+  };
+};
+
+type MainCategory = {
   id: string;
   name: string;
 };
@@ -33,11 +42,10 @@ type MenuItemFormData = {
 };
 
 export default function CreateMenuItem() {
-    const [imageFile, setImageFile] = useState<FileList | null>(null);
-    const location = useLocation();
-    console.log("Location state:", location);
-    const from = location.state?.from || "/";
-    console.log("from value:", from);
+  const [imageFile, setImageFile] = useState<FileList | null>(null);
+  const [selectedMainCategoryId, setSelectedMainCategoryId] = useState("");
+  const location = useLocation();
+  const from = location.state?.from || "/";
   console.log("Selected image file:", imageFile);
   const navigate = useNavigate();
 
@@ -46,7 +54,7 @@ export default function CreateMenuItem() {
     control,
     handleSubmit,
     reset,
-    // setValue
+    setValue,
     // formState: { errors },
   } = useForm<MenuItemFormData>({
     defaultValues: {
@@ -80,6 +88,23 @@ export default function CreateMenuItem() {
       return res.data.data as SubCategory[];
     },
   });
+
+  // Fetch main categories
+  const getMainCategories = useQuery({
+    queryKey: ["mainCategories"],
+    queryFn: async () => {
+      const res = await api.get("/menu/categories");
+      return res.data.data as MainCategory[];
+    },
+  });
+
+  const filteredSubcategories = useMemo(() => {
+    if (!getSubCategories.data) return [];
+    if (!selectedMainCategoryId) return [];
+    return getSubCategories.data.filter(
+      (sub) => sub.mainCategory.id === selectedMainCategoryId,
+    );
+  }, [getSubCategories.data, selectedMainCategoryId]);
 
   // Mutation
   const createMenuItemMutation = useMutation({
@@ -122,6 +147,10 @@ export default function CreateMenuItem() {
   };
 
   if (getSubCategories.isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (getMainCategories.isLoading) {
     return <div>Loading...</div>;
   }
 
@@ -211,6 +240,27 @@ export default function CreateMenuItem() {
           />
         </div>
 
+        {/* Main Category */}
+        <div>
+          <label className="block mb-2">Main Category</label>
+          <select
+            value={selectedMainCategoryId}
+            onChange={(e) => {
+              const selectedId = e.target.value;
+              setSelectedMainCategoryId(selectedId);
+              setValue("subcategoryId", "");
+            }}
+            className="w-full border p-3 rounded-lg"
+          >
+            <option value="">Select Main Category</option>
+            {getMainCategories.data?.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Subcategory */}
         <div>
           <label className="block mb-2">Subcategory</label>
@@ -223,7 +273,7 @@ export default function CreateMenuItem() {
           >
             <option value="">Select Subcategory</option>
 
-            {getSubCategories.data?.map((sub) => (
+            {filteredSubcategories.map((sub) => (
               <option key={sub.id} value={sub.id}>
                 {sub.name}
               </option>
