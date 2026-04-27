@@ -17,6 +17,7 @@ import CreateMenuItem from "./page/CreateMenuItem";
 import EditMenu from "./page/EditMenu";
 import BranchDashboard from "./page/BranchDashboard";
 import Menu from "./page/Menu";
+import SuperAdminLayout from "./component/SuperAdminLayout";
 
 function App() {
   return (
@@ -32,10 +33,30 @@ function App() {
               <Route
                 element={<ProtectedRoute allowedRoles={["super_admin"]} />}
               >
-                <Route
-                  path="/admin/dashboard"
-                  element={<SuperAdminDashboard />}
-                />
+                <Route path="admin/dashboard"   element={<SuperAdminLayout />}>
+                  <Route index  element={<SuperAdminDashboard />} />
+                  <Route
+                    path="create-branch"
+                    element={<CreateBranch />} // Make sure to import CreateBranch component
+                  />
+                  <Route
+                    path="branches/:id/update"
+                    element={<UpdateBranch />}
+                  />
+
+                  <Route
+                    path="create-main-category"
+                    element={<CreateCategory />}
+                  />
+                  <Route
+                    path="create-sub-category"
+                    element={<CreateSubCategory />}
+                  />
+                  <Route
+                    path="create-menu-item"
+                    element={<CreateMenuItem />}
+                  />
+                </Route>
               </Route>
               <Route
                 element={<ProtectedRoute allowedRoles={["branch_admin"]} />}
@@ -44,21 +65,7 @@ function App() {
               </Route>
               <Route
                 element={<ProtectedRoute allowedRoles={["super_admin"]} />}
-              >
-                <Route
-                  path="/admin/create-branch"
-                  element={<CreateBranch />} // Make sure to import CreateBranch component
-                />
-                <Route path="/branches/:id/update" element={<UpdateBranch />} />
-                <Route
-                  path="/admin/create-main-category"
-                  element={<CreateCategory />}
-                />
-                <Route
-                  path="/admin/create-sub-category"
-                  element={<CreateSubCategory />}
-                />
-              </Route>
+              ></Route>
 
               <Route
                 element={
@@ -68,10 +75,7 @@ function App() {
                 }
               >
                 <Route path="/create-user" element={<CreateUser />} />
-                <Route
-                  path="/admin/create-menu-item"
-                  element={<CreateMenuItem />}
-                />
+
                 <Route
                   path="/admin/edit-menu-item/:id"
                   element={<EditMenu />}

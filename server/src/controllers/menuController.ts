@@ -439,7 +439,17 @@ export const getMenuItems = async (req: Request, res: Response) => {
 
 export const getMenuItemById = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    let { id } = req.params;
+    if (Array.isArray(id)) {
+      id = id[0];
+    }
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Menu item ID is required",
+      });
+    }
+
 
     const item = await prisma.menuItem.findUnique({
       where: { id, deletedAt: null },

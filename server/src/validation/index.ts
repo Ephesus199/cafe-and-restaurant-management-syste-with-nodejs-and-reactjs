@@ -85,14 +85,25 @@ export const createBranchSchema = z.object({
 });
 
 export const updateBranchSchema = z.object({
+  branchCode: z.string().min(2).max(50).optional(),
   name: z.string().min(3).max(100).optional(),
   address: z.string().optional(),
   city: z.string().optional(),
   postalCode: z.string().optional(),
+  country: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email().optional(),
+  openingDate: z.string().datetime().optional(),
   isActive: z.boolean().optional(),
   notes: z.string().optional(),
+  privileges: z.object({
+    canEditName: z.boolean().default(false),
+    canEditPrice: z.boolean().default(false),
+    canEditImage: z.boolean().default(false),
+    canEditDescription: z.boolean().default(false),
+    canEditCalories: z.boolean().default(false),
+    canEditPreparationTime: z.boolean().default(false),
+  }).optional(),
 });
 
 export const createMainCategorySchema = z.object({

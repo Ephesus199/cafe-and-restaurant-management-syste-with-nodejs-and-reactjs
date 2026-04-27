@@ -57,6 +57,9 @@ export const getBranches = async (req: Request, res: Response) => {
     const branches = await prisma.branch.findMany({
       where: { deletedAt: null },
       orderBy: { name: "asc" },
+      include: {
+        bracnhPrivileges: true,
+      },
     });
 
     res.json({
@@ -90,6 +93,9 @@ export const getBranchById = async (req: Request, res: Response) => {
 
     const branch = await prisma.branch.findUnique({
       where: { id, deletedAt: null },
+      include: {
+        bracnhPrivileges: true,
+      },
     });
 
     if (!branch) {
@@ -125,11 +131,18 @@ export const updateBranch = async (req: AuthRequest, res: Response) => {
     // Remove undefined properties to satisfy Prisma strict typing
     const updateData: Record<string, any> = {};
     if (data.name !== undefined) updateData.name = data.name;
+    if (data.branchCode !== undefined) {
+      updateData.branchCode = data.branchCode.toUpperCase();
+    }
     if (data.address !== undefined) updateData.address = data.address;
     if (data.city !== undefined) updateData.city = data.city;
     if (data.postalCode !== undefined) updateData.postalCode = data.postalCode;
+    if (data.country !== undefined) updateData.country = data.country;
     if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.email !== undefined) updateData.email = data.email;
+    if (data.openingDate !== undefined) {
+      updateData.openingDate = data.openingDate ? new Date(data.openingDate) : null;
+    }
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
     if (data.notes !== undefined) updateData.notes = data.notes;
 
@@ -137,6 +150,29 @@ export const updateBranch = async (req: AuthRequest, res: Response) => {
       where: { id },
       data: updateData,
     });
+
+    if (data.privileges) {
+      await prisma.branchPrivilege.upsert({
+        where: { branchId: id },
+        update: {
+          canEditName: data.privileges.canEditName,
+          canEditPrice: data.privileges.canEditPrice,
+          canEditImage: data.privileges.canEditImage,
+          canEditDescription: data.privileges.canEditDescription,
+          canEditCalories: data.privileges.canEditCalories,
+          canEditPreparationTime: data.privileges.canEditPreparationTime,
+        },
+        create: {
+          branchId: id,
+          canEditName: data.privileges.canEditName,
+          canEditPrice: data.privileges.canEditPrice,
+          canEditImage: data.privileges.canEditImage,
+          canEditDescription: data.privileges.canEditDescription,
+          canEditCalories: data.privileges.canEditCalories,
+          canEditPreparationTime: data.privileges.canEditPreparationTime,
+        },
+      });
+    }
 
     res.json({
       success: true,
