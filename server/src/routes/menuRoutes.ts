@@ -13,7 +13,7 @@ import {
   setDailySpecial,
   getDailySpecials,
   getAvailableMenuForBranch,
-
+  getMenuItemById,
 } from "../controllers/menuController";
 import { validate } from "../middleware/validateMiddleware";
 import {
@@ -30,6 +30,7 @@ const router = Router();
 router.get("/categories", getMainCategories);
 router.get("/subcategories", getSubcategories);
 router.get("/items", getMenuItems);
+router.get("/items/:id", getMenuItemById);
 
 
 router.get("/branches/:branchId/available-menu", getAvailableMenuForBranch);
@@ -74,7 +75,7 @@ router.get("/branch/full-menu", authorizeRoles("branch_admin"), getMenuForBranch
 
 
 // Update menu item (global)
-router.put(
+router.patch(
   "/items/:id",
   authorizeRoles("super_admin", "branch_admin"),
   validate(updateMenuItemSchema),

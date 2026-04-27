@@ -6,6 +6,7 @@ import {
   getBranchById,
   updateBranch,
   deleteBranch,
+  getMyPrivileges,
 } from "../controllers/branchController";
 import { validate } from "../middleware/validateMiddleware";
 import { createBranchSchema, updateBranchSchema } from "../validation/index";
@@ -27,6 +28,14 @@ router.post(
 
 
 router.get("/:id", authorizeRoles("super_admin"), getBranchById);
+
+// Get my privileges
+router.get(
+  "/my/privileges",
+  authorizeRoles("branch_admin", "super_admin"),
+  getMyPrivileges
+);
+
 // Get all orders for a branch
 router.get(
   "/branches/:branchId/orders",

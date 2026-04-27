@@ -165,7 +165,7 @@ export const updateMenuItemSchema = z.object({
         description: z.string().optional(),
       }),
     )
-    .min(1, "At least one translation is required"),
+    .min(1, "At least one translation is required").optional(),
 
   price: z.number().positive("Price must be greater than 0").optional(),
 

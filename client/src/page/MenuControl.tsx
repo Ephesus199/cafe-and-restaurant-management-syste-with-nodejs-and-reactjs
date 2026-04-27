@@ -119,9 +119,9 @@ export default function MenuControl() {
   );
 
   const handleEdit = (id: string) => {
-    // Navigating to a potential edit page, assuming the route might be /admin/menu/edit/:id or similar
+    // Navigating to edit page
     console.log("Edit item:", id);
-    // navigate(`/edit-menu-item/${id}`);
+    navigate(`/admin/edit-menu-item/${id}`);
   };
 
   if (isLoadingMain || isLoadingSub || isLoadingMenu) {

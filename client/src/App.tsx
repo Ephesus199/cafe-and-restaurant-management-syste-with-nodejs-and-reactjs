@@ -14,6 +14,7 @@ import UpdateBranch from "./page/UpdateBranch";
 import CreateCategory from "./page/CreateCategory";
 import CreateSubCategory from "./page/CreateSubCategory";
 import CreateMenuItem from "./page/CreateMenuItem";
+import EditMenu from "./page/EditMenu";
 import BranchDashboard from "./page/BranchDashboard";
 import Menu from "./page/Menu";
 
@@ -70,6 +71,10 @@ function App() {
                 <Route
                   path="/admin/create-menu-item"
                   element={<CreateMenuItem />}
+                />
+                <Route
+                  path="/admin/edit-menu-item/:id"
+                  element={<EditMenu />}
                 />
               </Route>
 

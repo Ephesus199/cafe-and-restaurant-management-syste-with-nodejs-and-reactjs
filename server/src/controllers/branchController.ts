@@ -181,3 +181,40 @@ export const deleteBranch = async (req: AuthRequest, res: Response) => {
       .json({ success: false, message: "Failed to delete branch" });
   }
 };
+
+// Get My Branch Privileges
+export const getMyPrivileges = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    
+    // Only Branch Admin has branch privileges conceptually, or users attached to a branch
+    if (!user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: "User is not associated with any branch",
+      });
+    }
+
+    const privileges = await prisma.branchPrivilege.findUnique({
+      where: { branchId: user.branchId },
+    });
+
+    if (!privileges) {
+      return res.status(404).json({
+        success: false,
+        message: "Branch privileges not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: privileges,
+    });
+  } catch (error) {
+    console.error("Error fetching branch privileges:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch branch privileges",
+    });
+  }
+};

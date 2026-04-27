@@ -436,6 +436,50 @@ export const getMenuItems = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getMenuItemById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const item = await prisma.menuItem.findUnique({
+      where: { id, deletedAt: null },
+      select: {
+        id: true,
+        price: true,
+        imageUrl: true,
+        calories: true,
+        preparationTime: true,
+        defaultAvailable: true,
+        subcategoryId: true,
+        translations: {
+          select: {
+            languageCode: true,
+            name: true,
+            description: true,
+          },
+        },
+      },
+    });
+
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: "Menu item not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: item,
+    });
+  } catch (error) {
+    console.error("Error fetching menu item by id:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch menu item",
+    });
+  }
+};
 export const getAvailableMenuForBranch = async (req: AuthRequest, res: Response) => {
   try {
     let { branchId } = req.params;
@@ -775,8 +819,41 @@ export const updateMenuItem = async (req: AuthRequest, res: Response) => {
 
     let imageUrl = existingItem?.imageUrl;
 
-    // If new image is uploaded, replace old one
-    if (imageFile) {
+    // Fetch branch privileges if user is a branch admin
+    const user = req.user!;
+    let privileges = null;
+    if (user.role === "branch_admin" && user.branchId) {
+      privileges = await prisma.branchPrivilege.findUnique({
+        where: { branchId: user.branchId },
+      });
+    }
+
+    const isSuperAdmin = user.role === "super_admin";
+    const canEditPrice = isSuperAdmin || privileges?.canEditPrice;
+    const canEditDescription = isSuperAdmin || privileges?.canEditDescription;
+    const canEditCalories = isSuperAdmin || privileges?.canEditCalories;
+    const canEditPreparationTime = isSuperAdmin || privileges?.canEditPreparationTime;
+    const canEditImage = isSuperAdmin || privileges?.canEditImage;
+    // const canEditName = isSuperAdmin || privileges?.canEditName;
+
+    // Check for unauthorized field updates
+    const unauthorizedFields: string[] = [];
+    // if (bodyData.name !== undefined && !canEditName) unauthorizedFields.push("name");
+    if (bodyData.price !== undefined && !canEditPrice) unauthorizedFields.push("price");
+    if (bodyData.description !== undefined && !canEditDescription) unauthorizedFields.push("description");
+    if (bodyData.calories !== undefined && !canEditCalories) unauthorizedFields.push("calories");
+    if (bodyData.preparationTime !== undefined && !canEditPreparationTime) unauthorizedFields.push("preparation time");
+    if (imageFile && !canEditImage) unauthorizedFields.push("image");
+
+    if (unauthorizedFields.length > 0) {
+      return res.status(403).json({
+        success: false,
+        message: `You do not have privilege to update the specified field(s): ${unauthorizedFields.join(", ")}`,
+      });
+    }
+
+    // If new image is uploaded and user has privilege, replace old one
+    if (imageFile && canEditImage) {
       imageUrl = await CloudinaryService.replaceImage(
         existingItem?.imageUrl || null,
         imageFile,
@@ -785,16 +862,13 @@ export const updateMenuItem = async (req: AuthRequest, res: Response) => {
 
     // Prepare update data to match Prisma's MenuItemUpdateInput
     const updateData: any = {};
-    // if (bodyData.name !== undefined) updateData.name = { set: bodyData.name };
     if (bodyData.price !== undefined) updateData.price = { set: bodyData.price };
-    if (bodyData.description !== undefined)
-      updateData.description = { set: bodyData.description };
-    if (bodyData.calories !== undefined)
-      updateData.calories = { set: bodyData.calories };
-    if (bodyData.preparationTime !== undefined)
-      updateData.preparationTime = { set: bodyData.preparationTime };
-    if (imageUrl !== undefined) updateData.imageUrl = { set: imageUrl };
-    updateData.updatedBy = { set: req.user!.id };
+    if (bodyData.description !== undefined) updateData.description = { set: bodyData.description };
+    if (bodyData.calories !== undefined) updateData.calories = { set: bodyData.calories };
+    if (bodyData.preparationTime !== undefined) updateData.preparationTime = { set: bodyData.preparationTime };
+    if (imageFile && imageUrl !== undefined) updateData.imageUrl = { set: imageUrl };
+    
+    updateData.updatedBy = { set: user.id };
 
     const menuItem = await prisma.menuItem.update({
       where: { id },
