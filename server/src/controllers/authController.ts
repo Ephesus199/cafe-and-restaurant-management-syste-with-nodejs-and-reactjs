@@ -42,7 +42,7 @@ export const login = async (req: Request, res: Response) => {
       id: user.id,
       email: user.email,
       role: user.role,
-      branchId: user.branchId,
+      branchId: user.managedBranchId || user.branchId,
     };
 
     const accessToken = generateAccessToken(payload);
@@ -65,7 +65,7 @@ export const login = async (req: Request, res: Response) => {
           email: user.email,
           fullName: user.fullName,
           role: user.role,
-          branchId: user.branchId,
+          branchId: user.managedBranchId || user.branchId,
         },
         accessToken,
         // refreshToken, // No need to send refresh token in response body since it's in cookie
@@ -106,7 +106,7 @@ export const refreshToken = async (req: Request, res: Response) => {
       id: user.id,
       email: user.email,
       role: user.role,
-      branchId: user.branchId,
+      branchId: user.managedBranchId || user.branchId,
     });
 
     res.json({
@@ -134,6 +134,7 @@ export const getMe = async (req: AuthRequest, res: Response) => {
         fullName: true,
         role: true,
         branchId: true,
+        managedBranchId: true,
         isActive: true,
         createdAt: true,
       },
@@ -145,9 +146,15 @@ export const getMe = async (req: AuthRequest, res: Response) => {
         .json({ success: false, message: "User not found" });
     }
 
+    // Map managedBranchId to branchId for frontend consistency
+    const userData = {
+      ...user,
+      branchId: user.managedBranchId || user.branchId,
+    };
+
     res.json({
       success: true,
-      data: user,
+      data: userData,
     });
   } catch (error) {
     res

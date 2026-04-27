@@ -414,6 +414,7 @@ export const getMenuItems = async (req: Request, res: Response) => {
           name: mainCategoryTranslation?.name || "",
         },
 
+        defaultAvailable: item.defaultAvailable,
         // Optional: return all translations if needed
         // translations: item.translations
       };
@@ -595,7 +596,10 @@ export const getAvailableMenuForBranch = async (req: AuthRequest, res: Response)
 
 export const getMenuForBranch = async (req: AuthRequest, res: Response) => {
   try {
-    let { branchId } = req.params;
+    // let { branchId } = req.params;
+    const user = req.user!;
+    let branchId: string = user.branchId || "";
+    
     const languageCode = (req.query.lang as string)?.toLowerCase() || "en"; // Default to English
 
     if (Array.isArray(branchId)) {
@@ -809,7 +813,9 @@ export const updateMenuItem = async (req: AuthRequest, res: Response) => {
 
 export const toggleAvailability = async (req: AuthRequest, res: Response) => {
   try {
-    let { branchId, itemId } = req.params;
+    let { itemId } = req.params;
+    const user = req.user!;
+    let branchId: string = user.branchId || "";
     if (Array.isArray(branchId)) {
       branchId = branchId[0];
     }

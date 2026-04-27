@@ -70,7 +70,7 @@ router.post(
 router.get("/items", authorizeRoles("super_admin"), getMenuItems);
 
 // Get menu for a specific branch (with availability)
-router.get("/branches/:branchId/menu", getMenuForBranch);
+router.get("/branch/full-menu", authorizeRoles("branch_admin"), getMenuForBranch);
 
 
 // Update menu item (global)
@@ -83,7 +83,7 @@ router.put(
 
 // Toggle availability for a branch
 router.patch(
-  "/branches/:branchId/menu/:itemId/availability",
+  "/branches/menu/:itemId/availability",
   authorizeRoles("branch_admin"),
   toggleAvailability,
 );
