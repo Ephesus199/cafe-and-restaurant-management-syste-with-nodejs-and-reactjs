@@ -18,15 +18,26 @@ type MenuItem = {
   };
 };
 
+const languageOptions = [
+  { code: "en", label: "English" },
+  { code: "am", label: "Amharic" },
+  { code: "oro", label: "Oromifa" },
+];
+
 export default function ViewAllMenu() {
     const [selectedMainCategoryId, setSelectedMainCategoryId] = useState("");
     const [selectedSubcategoryId, setSelectedSubcategoryId] = useState("");
+  const [selectedLanguage, setSelectedLanguage] = useState("en");
     const navigate = useNavigate();
 
     const { data: menuItems = [], isLoading, isError } = useQuery({
-        queryKey: ["allMenuItems"],
+    queryKey: ["allMenuItems", selectedLanguage],
         queryFn: async () => {
-            const res = await api.get("/menu/items");
+      const res = await api.get("/menu/items", {
+        params: {
+          lang: selectedLanguage,
+        },
+      });
             return res.data.data as MenuItem[];
         },
     });
@@ -83,6 +94,25 @@ export default function ViewAllMenu() {
     return (
         <div className="p-4">
             <h1 className="text-2xl font-bold mb-4">View All Menu Items</h1>
+
+      <div className="mb-4 max-w-xs">
+        <label className="block mb-2 font-medium">Language</label>
+        <select
+          value={selectedLanguage}
+          onChange={(e) => {
+            setSelectedLanguage(e.target.value);
+            setSelectedMainCategoryId("");
+            setSelectedSubcategoryId("");
+          }}
+          className="w-full border p-3 rounded-lg"
+        >
+          {languageOptions.map((language) => (
+            <option key={language.code} value={language.code}>
+              {language.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
