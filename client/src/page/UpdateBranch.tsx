@@ -2,6 +2,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import api from "../api/axios";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
+import { useEffect } from "react";
 
 interface BranchDetails {
   id: string;
@@ -36,7 +37,18 @@ interface BranchDetails {
 
 export default function UpdateBranch() {
   const { id } = useParams();
-  const { register, handleSubmit } = useForm<BranchDetails>();
+  const { register, handleSubmit, reset } = useForm<BranchDetails>({
+    defaultValues: {
+      privileges: {
+        canEditName: false,
+        canEditPrice: false,
+        canEditImage: false,
+        canEditDescription: false,
+        canEditCalories: false,
+        canEditPreparationTime: false,
+      },
+    },
+  });
   const navigate = useNavigate();
 
   const getBranchDetails = useQuery({
@@ -70,6 +82,35 @@ export default function UpdateBranch() {
     updateBranchMutation.mutate(finalData);
   }
 
+  useEffect(() => {
+    if (!getBranchDetails.data) return;
+
+    const privilegeDefaults = getBranchDetails.data.bracnhPrivileges?.[0];
+    reset({
+      name: getBranchDetails.data.name,
+      branchCode: getBranchDetails.data.branchCode,
+      address: getBranchDetails.data.address || "",
+      city: getBranchDetails.data.city || "",
+      postalCode: getBranchDetails.data.postalCode || "",
+      country: getBranchDetails.data.country || "",
+      phone: getBranchDetails.data.phone || "",
+      email: getBranchDetails.data.email || "",
+      openingDate: getBranchDetails.data.openingDate
+        ? new Date(getBranchDetails.data.openingDate).toISOString().split("T")[0]
+        : "",
+      isActive: Boolean(getBranchDetails.data.isActive),
+      notes: getBranchDetails.data.notes || "",
+      privileges: {
+        canEditName: Boolean(privilegeDefaults?.canEditName),
+        canEditPrice: Boolean(privilegeDefaults?.canEditPrice),
+        canEditImage: Boolean(privilegeDefaults?.canEditImage),
+        canEditDescription: Boolean(privilegeDefaults?.canEditDescription),
+        canEditCalories: Boolean(privilegeDefaults?.canEditCalories),
+        canEditPreparationTime: Boolean(privilegeDefaults?.canEditPreparationTime),
+      },
+    });
+  }, [getBranchDetails.data, reset]);
+
   if (getBranchDetails.isLoading) {
     return <div>Loading...</div>;
   }
@@ -77,8 +118,6 @@ export default function UpdateBranch() {
   if (getBranchDetails.isError || !getBranchDetails.data) {
     return <div>Failed to load branch details.</div>;
   }
-
-  const privilegeDefaults = getBranchDetails.data.bracnhPrivileges?.[0];
 
   return (
     <div className="max-w-3xl mx-auto p-6">
@@ -92,7 +131,6 @@ export default function UpdateBranch() {
             </label>
             <input
               type="text"
-              defaultValue={getBranchDetails.data.name}
               {...register("name", { required: true })}
               className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               placeholder="Enter branch name"
@@ -104,7 +142,6 @@ export default function UpdateBranch() {
             </label>
             <input
               type="text"
-              defaultValue={getBranchDetails.data.branchCode}
               {...register("branchCode", { required: true })}
               className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               placeholder="e.g. BR-001"
@@ -119,7 +156,6 @@ export default function UpdateBranch() {
           <input
             type="text"
             id="address"
-            defaultValue={getBranchDetails.data.address}
             {...register("address")}
             className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             placeholder="Street address"
@@ -134,7 +170,6 @@ export default function UpdateBranch() {
             <input
               type="text"
               id="city"
-              defaultValue={getBranchDetails.data.city}
               {...register("city")}
               className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
@@ -146,7 +181,6 @@ export default function UpdateBranch() {
             <input
               type="text"
               id="postalCode"
-              defaultValue={getBranchDetails.data.postalCode}
               {...register("postalCode")}
               className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
@@ -158,7 +192,6 @@ export default function UpdateBranch() {
             <input
               type="text"
               id="country"
-              defaultValue={getBranchDetails.data.country}
               {...register("country")}
               className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
@@ -173,7 +206,6 @@ export default function UpdateBranch() {
             <input
               type="text"
               id="phone"
-              defaultValue={getBranchDetails.data.phone}
               {...register("phone")}
               className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               placeholder="+1 234 567 8900"
@@ -186,7 +218,6 @@ export default function UpdateBranch() {
             <input
               type="email"
               id="email"
-              defaultValue={getBranchDetails.data.email}
               {...register("email")}
               className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               placeholder="branch@example.com"
@@ -202,13 +233,6 @@ export default function UpdateBranch() {
             <input
               type="date"
               id="openingDate"
-              defaultValue={
-                getBranchDetails.data.openingDate
-                  ? new Date(getBranchDetails.data.openingDate)
-                      .toISOString()
-                      .split("T")[0]
-                  : ""
-              }
               {...register("openingDate")}
               className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
@@ -219,7 +243,6 @@ export default function UpdateBranch() {
             <label className="flex items-center gap-3 cursor-pointer p-3 border rounded-lg">
               <input
                 type="checkbox"
-                defaultChecked={getBranchDetails.data.isActive}
                 {...register("isActive")}
                 className="w-4 h-4 text-blue-600 rounded"
               />
@@ -237,7 +260,6 @@ export default function UpdateBranch() {
           <textarea
             id="notes"
             rows={3}
-            defaultValue={getBranchDetails.data.notes}
             {...register("notes")}
             className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             placeholder="Any additional information..."
@@ -254,7 +276,6 @@ export default function UpdateBranch() {
             <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-gray-200">
               <input
                 type="checkbox"
-                defaultChecked={privilegeDefaults?.canEditName}
                 {...register("privileges.canEditName")}
                 className="w-4 h-4 text-blue-600 rounded"
               />
@@ -263,7 +284,6 @@ export default function UpdateBranch() {
             <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-gray-200">
               <input
                 type="checkbox"
-                defaultChecked={privilegeDefaults?.canEditPrice}
                 {...register("privileges.canEditPrice")}
                 className="w-4 h-4 text-blue-600 rounded"
               />
@@ -272,7 +292,6 @@ export default function UpdateBranch() {
             <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-gray-200">
               <input
                 type="checkbox"
-                defaultChecked={privilegeDefaults?.canEditImage}
                 {...register("privileges.canEditImage")}
                 className="w-4 h-4 text-blue-600 rounded"
               />
@@ -281,7 +300,6 @@ export default function UpdateBranch() {
             <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-gray-200">
               <input
                 type="checkbox"
-                defaultChecked={privilegeDefaults?.canEditDescription}
                 {...register("privileges.canEditDescription")}
                 className="w-4 h-4 text-blue-600 rounded"
               />
@@ -290,7 +308,6 @@ export default function UpdateBranch() {
             <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-gray-200">
               <input
                 type="checkbox"
-                defaultChecked={privilegeDefaults?.canEditCalories}
                 {...register("privileges.canEditCalories")}
                 className="w-4 h-4 text-blue-600 rounded"
               />
@@ -299,7 +316,6 @@ export default function UpdateBranch() {
             <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-gray-200">
               <input
                 type="checkbox"
-                defaultChecked={privilegeDefaults?.canEditPreparationTime}
                 {...register("privileges.canEditPreparationTime")}
                 className="w-4 h-4 text-blue-600 rounded"
               />
