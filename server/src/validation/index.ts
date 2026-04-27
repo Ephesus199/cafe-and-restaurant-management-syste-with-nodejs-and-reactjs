@@ -73,6 +73,15 @@ export const createBranchSchema = z.object({
 
   openingDate: z.string().datetime().optional(),
   notes: z.string().optional(),
+  
+  privileges: z.object({
+    canEditName: z.boolean().default(false),
+    canEditPrice: z.boolean().default(false),
+    canEditImage: z.boolean().default(false),
+    canEditDescription: z.boolean().default(false),
+    canEditCalories: z.boolean().default(false),
+    canEditPreparationTime: z.boolean().default(false),
+  }).optional(),
 });
 
 export const updateBranchSchema = z.object({

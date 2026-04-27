@@ -14,6 +14,14 @@ interface branchInfo{
     email?: string;
     openingDate?: string;
     notes?: string;
+    privileges?: {
+        canEditName: boolean;
+        canEditPrice: boolean;
+        canEditImage: boolean;
+        canEditDescription: boolean;
+        canEditCalories: boolean;
+        canEditPreparationTime: boolean;
+    };
 }
 export default function CreateBranch() {
     const { register, handleSubmit } = useForm<branchInfo>();
@@ -82,6 +90,51 @@ export default function CreateBranch() {
                     <label htmlFor="notes">Notes:</label>
                     <textarea id="notes" {...register("notes")} />
                 </div>
+                
+                <div style={{ marginTop: '20px', marginBottom: '20px', border: '1px solid #ccc', padding: '15px', borderRadius: '8px' }}>
+                    <h3>Branch Privileges</h3>
+                    <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '10px' }}>Select what menu fields this branch is allowed to edit.</p>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        <div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <input type="checkbox" {...register("privileges.canEditName")} />
+                                Can Edit Name
+                            </label>
+                        </div>
+                        <div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <input type="checkbox" {...register("privileges.canEditPrice")} />
+                                Can Edit Price
+                            </label>
+                        </div>
+                        <div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <input type="checkbox" {...register("privileges.canEditImage")} />
+                                Can Edit Image
+                            </label>
+                        </div>
+                        <div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <input type="checkbox" {...register("privileges.canEditDescription")} />
+                                Can Edit Description
+                            </label>
+                        </div>
+                        <div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <input type="checkbox" {...register("privileges.canEditCalories")} />
+                                Can Edit Calories
+                            </label>
+                        </div>
+                        <div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <input type="checkbox" {...register("privileges.canEditPreparationTime")} />
+                                Can Edit Preparation Time
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
                 <button type="submit">Create Branch</button>
             </form>
         </div>

@@ -28,10 +28,12 @@ export const createBranch = async (req: AuthRequest, res: Response) => {
     await prisma.branchPrivilege.create({
       data: {
         branchId: branch.id,
-        canEditName: true,
-        canEditPrice: true,
-        canEditImage: true,
-        canEditDescription: true,
+        canEditName: data.privileges?.canEditName ?? false,
+        canEditPrice: data.privileges?.canEditPrice ?? false,
+        canEditImage: data.privileges?.canEditImage ?? false,
+        canEditDescription: data.privileges?.canEditDescription ?? false,
+        canEditCalories: data.privileges?.canEditCalories ?? false,
+        canEditPreparationTime: data.privileges?.canEditPreparationTime ?? false,
       },
     });
 
