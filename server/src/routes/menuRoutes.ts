@@ -14,6 +14,7 @@ import {
   getDailySpecials,
   getAvailableMenuForBranch,
   getMenuItemById,
+  deleteMenuItem,
 } from "../controllers/menuController";
 import { validate } from "../middleware/validateMiddleware";
 import {
@@ -24,6 +25,7 @@ import {
 } from "../validation/index";
 import { parse } from "node:path";
 import { parseMenuItemFormData } from "../middleware/parseFormData";
+import { de } from "zod/locales";
 
 const router = Router();
 
@@ -69,7 +71,7 @@ router.post(
 );
 
 router.get("/items", authorizeRoles("super_admin"), getMenuItems);
-
+router.delete("/items/:id", authorizeRoles("super_admin"), deleteMenuItem);
 // Get menu for a specific branch (with availability)
 router.get("/branch/full-menu", authorizeRoles("branch_admin"), getMenuForBranch);
 

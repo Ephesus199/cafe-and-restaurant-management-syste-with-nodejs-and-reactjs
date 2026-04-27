@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../api/axios";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -28,19 +28,57 @@ export default function ViewAllMenu() {
     const [selectedMainCategoryId, setSelectedMainCategoryId] = useState("");
     const [selectedSubcategoryId, setSelectedSubcategoryId] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState("en");
+  const [pendingDeleteMenuId, setPendingDeleteMenuId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
     const navigate = useNavigate();
 
-    const { data: menuItems = [], isLoading, isError } = useQuery({
+  const deleteMenuItemMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/menu/items/${id}`);
+    },
+    onMutate: async (id) => {
+      setPendingDeleteMenuId(id);
+      await queryClient.cancelQueries({ queryKey: ["allMenuItems", selectedLanguage] });
+
+      const previousMenuItems = queryClient.getQueryData<MenuItem[]>([
+        "allMenuItems",
+        selectedLanguage,
+      ]);
+
+      queryClient.setQueryData<MenuItem[]>(
+        ["allMenuItems", selectedLanguage],
+        (oldItems = []) => oldItems.filter((item) => item.id !== id),
+      );
+
+      return { previousMenuItems };
+    },
+    onError: (_error, _id, context) => {
+      if (context?.previousMenuItems) {
+        queryClient.setQueryData(
+          ["allMenuItems", selectedLanguage],
+          context.previousMenuItems,
+        );
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["allMenuItems", selectedLanguage] });
+    },
+    onSettled: () => {
+      setPendingDeleteMenuId(null);
+    },
+  });
+
+  const { data: menuItems = [], isLoading, isError } = useQuery({
     queryKey: ["allMenuItems", selectedLanguage],
-        queryFn: async () => {
+    queryFn: async () => {
       const res = await api.get("/menu/items", {
         params: {
           lang: selectedLanguage,
         },
       });
-            return res.data.data as MenuItem[];
-        },
-    });
+      return res.data.data as MenuItem[];
+    },
+  });
 
     const mainCategories = useMemo(() => {
         const uniqueCategories = new Map<string, { id: string; name: string }>();
@@ -156,12 +194,13 @@ export default function ViewAllMenu() {
                             <th className="border border-gray-300 px-4 py-2 text-left">Name</th>
                             <th className="border border-gray-300 px-4 py-2 text-left">Price</th>
                             <th className="border border-gray-300 px-4 py-2 text-left">Edit</th>
+              <th className="border border-gray-300 px-4 py-2 text-left">Delete</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredItems.length === 0 ? (
                             <tr>
-                                <td className="border border-gray-300 px-4 py-3 text-center" colSpan={4}>
+                <td className="border border-gray-300 px-4 py-3 text-center" colSpan={5}>
                                     No menu items found for selected filters.
                                 </td>
                             </tr>
@@ -196,6 +235,22 @@ export default function ViewAllMenu() {
                                             Edit
                                         </button>
                                     </td>
+                  <td className="border border-gray-300 px-4 py-2">
+                    <button
+                      type="button"
+                      disabled={pendingDeleteMenuId === item.id}
+                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded disabled:opacity-60"
+                      onClick={() => {
+                        const shouldDelete = window.confirm(
+                          `Are you sure you want to delete ${item.name}?`,
+                        );
+                        if (!shouldDelete) return;
+                        deleteMenuItemMutation.mutate(item.id);
+                      }}
+                    >
+                      {pendingDeleteMenuId === item.id ? "Deleting..." : "Delete"}
+                    </button>
+                  </td>
                                 </tr>
                             ))
                         )}

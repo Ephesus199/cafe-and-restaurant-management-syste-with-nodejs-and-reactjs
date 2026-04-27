@@ -974,6 +974,74 @@ export const toggleAvailability = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const deleteMenuItem = async (req: AuthRequest, res: Response) => {
+  try {
+    let { id } = req.params;
+    if (Array.isArray(id)) {
+      id = id[0];
+    }
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Menu item ID is required",
+      });
+    }
+
+    const existingMenuItem = await prisma.menuItem.findUnique({
+      where: { id, deletedAt: null },
+      select: {
+        id: true,
+        imageUrl: true,
+      },
+    });
+
+    if (!existingMenuItem) {
+      return res.status(404).json({
+        success: false,
+        message: "Menu item not found",
+      });
+    }
+
+    if (existingMenuItem.imageUrl) {
+      const deletedFromCloudinary = await CloudinaryService.deleteImage(
+        existingMenuItem.imageUrl,
+      );
+      if (!deletedFromCloudinary) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to delete menu image from Cloudinary",
+        });
+      }
+    }
+
+    await prisma.$transaction([
+      prisma.dailySpecial.deleteMany({
+        where: { menuItemId: id },
+      }),
+      prisma.menuItemAvailabilityException.deleteMany({
+        where: { menuItemId: id },
+      }),
+      prisma.menuItemTranslation.deleteMany({
+        where: { menuItemId: id },
+      }),
+      prisma.menuItem.delete({
+        where: { id },
+      }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: "Menu item and image deleted successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to delete menu item",
+    });
+  }
+};
+
 // ==================== DAILY SPECIALS ====================
 export const setDailySpecial = async (req: AuthRequest, res: Response) => {
   try {
