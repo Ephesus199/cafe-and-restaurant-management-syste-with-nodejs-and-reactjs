@@ -18,6 +18,7 @@ import EditMenu from "./page/EditMenu";
 import BranchDashboard from "./page/BranchDashboard";
 import Menu from "./page/Menu";
 import SuperAdminLayout from "./component/SuperAdminLayout";
+import ViewAllMenu from "./page/ViewAllMenu";
 
 function App() {
   return (
@@ -55,6 +56,10 @@ function App() {
                   <Route
                     path="create-menu-item"
                     element={<CreateMenuItem />}
+                  />
+                  <Route
+                    path="view-menu"
+                    element={<ViewAllMenu />}
                   />
                 </Route>
               </Route>
