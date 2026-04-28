@@ -88,52 +88,60 @@ export default function Menu() {
   );
 
   if (isLoadingMain || isLoadingSub) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center px-4">
+        <p className="text-sm sm:text-base text-gray-500">Loading menu...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-6">Menu</h1>
+    <div className="bg-[#f5f5f5] min-h-screen">
+      <div className="max-w-[1280px] mx-auto px-3 sm:px-5 lg:px-8 py-5 sm:py-7">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-5">
+          {/* Main Categories */}
+          <div className="flex justify-center mb-4 sm:mb-5">
+            <div className="inline-flex gap-2 sm:gap-3 p-1.5 bg-[#efefef] rounded-xl overflow-x-auto max-w-full">
+              {mainCategories.map((mainCategory: { id: string; name: string }) => (
+                <button
+                  key={mainCategory.id}
+                  onClick={() => {
+                    setSelectedMainCategoryId(mainCategory.id);
+                    setSelectedSubCategoryId(null); // reset sub when main changes
+                  }}
+                  className={`cursor-pointer px-4 sm:px-5 py-2 rounded-lg text-sm sm:text-base font-semibold transition-colors whitespace-nowrap ${
+                    mainCategory.id === effectiveMainCategoryId
+                      ? "bg-[#2f2f2f] text-white"
+                      : "bg-[#d7d7d7] text-[#333333] hover:bg-[#c9c9c9]"
+                  }`}
+                >
+                  {mainCategory.name}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      {/* Main Categories */}
-      <div className="flex gap-4 mb-4 overflow-x-auto pb-2">
-        {mainCategories.map((mainCategory: { id: string; name: string }) => (
-          <button
-            key={mainCategory.id}
-            onClick={() => {
-              setSelectedMainCategoryId(mainCategory.id);
-              setSelectedSubCategoryId(null); // reset sub when main changes
-            }}
-            className={`cursor-pointer px-4 py-2 rounded-md transition-colors whitespace-nowrap ${
-              mainCategory.id === effectiveMainCategoryId
-                ? "bg-amber-600 text-white font-bold shadow-md"
-                : "bg-gray-200 text-gray-800 hover:bg-gray-300"
-            }`}
-          >
-            {mainCategory.name}
-          </button>
-        ))}
-      </div>
+          {/* Subcategories */}
+          <div className="flex justify-center mb-5 sm:mb-7">
+            <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-1 max-w-full">
+              {filteredSubcategories.map((subcategory: { id: string; name: string }) => (
+                <button
+                  key={subcategory.id}
+                  onClick={() => setSelectedSubCategoryId(subcategory.id)}
+                  className={`cursor-pointer px-3.5 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-semibold transition-colors border whitespace-nowrap ${
+                    effectiveSubCategoryId === subcategory.id
+                      ? "bg-[#ffb400] text-black border-[#ffb400]"
+                      : "bg-[#3f3f3f] text-white border-[#3f3f3f] hover:bg-[#2f2f2f]"
+                  }`}
+                >
+                  {subcategory.name}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      {/* Subcategories */}
-      <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
-        {filteredSubcategories.map((subcategory: { id: string; name: string }) => (
-          <button
-            key={subcategory.id}
-            onClick={() => setSelectedSubCategoryId(subcategory.id)}
-            className={`cursor-pointer px-4 py-2 rounded-full transition-colors whitespace-nowrap ${
-              effectiveSubCategoryId === subcategory.id
-                ? "bg-green-500 text-white font-bold shadow-sm"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300"
-            }`}
-          >
-            {subcategory.name}
-          </button>
-        ))}
-      </div>
-
-      {/* Menu Items Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {/* Menu Items Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
         {isLoadingMenu ? (
           <div className="col-span-full text-center py-8 text-gray-500">
             Loading menu items...
@@ -142,30 +150,30 @@ export default function Menu() {
           filteredMenuItems.map((item: { id: string; name: string; imageUrl?: string; price: number; description?: string }) => (
             <div
               key={item.id}
-              className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow flex flex-col"
+              className="border border-[#e4e4e4] rounded-xl overflow-hidden bg-white hover:shadow-md transition-shadow flex flex-col"
             >
               {item.imageUrl ? (
                 <img
                   src={item.imageUrl}
                   alt={item.name}
-                  className="w-full h-48 object-cover"
+                  className="w-full h-40 sm:h-44 lg:h-48 object-contain bg-white p-3"
                 />
               ) : (
-                <div className="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-400">
+                <div className="w-full h-40 sm:h-44 lg:h-48 bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
                   No Image Available
                 </div>
               )}
-              <div className="p-4 flex flex-col grow">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-xl font-bold text-gray-800">
-                    {item.name}
-                  </h3>
-                  <span className="font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md ml-2 whitespace-nowrap">
-                    ${item.price}
+              <div className="p-4 flex flex-col grow text-center">
+                <div className="mb-1">
+                  <span className="text-base sm:text-lg font-semibold text-[#2a2a2a] tracking-wide">
+                    {item.price} br
                   </span>
                 </div>
+                <h3 className="text-xl sm:text-2xl font-semibold text-[#222222] leading-tight">
+                  {item.name}
+                </h3>
                 {item.description && (
-                  <p className="text-gray-600 text-sm mt-1 grow">
+                  <p className="text-gray-600 text-xs sm:text-sm mt-2 grow">
                     {item.description}
                   </p>
                 )}
@@ -177,6 +185,8 @@ export default function Menu() {
             <p className="text-lg">No items available for this category.</p>
           </div>
         )}
+          </div>
+        </div>
       </div>
     </div>
   );
