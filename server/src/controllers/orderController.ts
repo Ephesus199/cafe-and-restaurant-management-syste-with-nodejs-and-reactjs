@@ -21,35 +21,74 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
         .json({ success: false, message: "Only waiters can create orders" });
     }
 
-    const order = await prisma.order.create({
-      data: {
-        branchId: waiter.branchId!,
-        waiterId: waiter.id,
-        tableNumber: data.tableNumber ?? null,
-        customerNotes: data.customerNotes ?? null,
-        kitchenNotes: data.kitchenNotes ?? null,
-        status: "pending",
-        subtotal: 0,
-        totalAmount: 0,
+    const menuItemIds = data.items.map((item) => item.menuItemId);
+    const menuItems = await prisma.menuItem.findMany({
+      where: {
+        id: { in: menuItemIds },
       },
       select: {
         id: true,
-        branchId: true,
-        waiterId: true,
-        tableNumber: true,
-        customerNotes: true,
-        kitchenNotes: true,
-        status: true,
-        subtotal: true,
-        totalAmount: true,
+        price: true,
+      },
+    });
 
+    if (menuItems.length !== menuItemIds.length) {
+      return res.status(404).json({
+        success: false,
+        message: "One or more menu items were not found",
+      });
+    }
 
-      }
+    const menuPriceMap = new Map(
+      menuItems.map((menuItem) => [menuItem.id, Number(menuItem.price)]),
+    );
+
+    const orderItemsPayload = data.items.map((item) => {
+      const unitPrice = menuPriceMap.get(item.menuItemId)!;
+      const quantity = Number(item.quantity);
+
+      return {
+        menuItemId: item.menuItemId,
+        quantity,
+        unitPrice,
+        subtotal: unitPrice * quantity,
+        specialInstructions: item.specialInstructions ?? null,
+        status: "pending" as const,
+      };
+    });
+
+    const subtotal = orderItemsPayload.reduce((sum, item) => sum + item.subtotal, 0);
+
+    const order = await prisma.$transaction(async (tx) => {
+      const createdOrder = await tx.order.create({
+        data: {
+          branchId: waiter.branchId!,
+          waiterId: waiter.id,
+          tableNumber: data.tableNumber ?? null,
+          customerNotes: data.customerNotes ?? null,
+          kitchenNotes: data.kitchenNotes ?? null,
+          status: "pending",
+          subtotal,
+          totalAmount: subtotal,
+          items: {
+            create: orderItemsPayload,
+          },
+        },
+        include: {
+          items: {
+            include: {
+              menuItem: true,
+            },
+          },
+        },
+      });
+
+      return createdOrder;
     });
 
     res.status(201).json({
       success: true,
-      message: "Order created successfully",
+      message: "Order and items created successfully",
       data: order,
     });
   } catch (error: any) {

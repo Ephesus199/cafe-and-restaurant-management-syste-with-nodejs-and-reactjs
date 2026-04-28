@@ -14,13 +14,14 @@ import CreateCategory from "./page/CreateCategory";
 import CreateSubCategory from "./page/CreateSubCategory";
 import CreateMenuItem from "./page/CreateMenuItem";
 import EditMenu from "./page/EditMenu";
-import BranchDashboard from "./page/BranchDashboard";
+// import BranchDashboard from "./page/BranchDashboard";
 import Menu from "./page/Menu";
 import SuperAdminLayout from "./component/Layout";
 // import ViewAllMenu from "./page/ViewAllMenu";
 // import SuperAdminDashboard from "./page/SuperAdminDashboard";
 import DashboardSwitcher from "./component/DashboardSwitcher";
 import MenuSwitcher from "./component/MenuSwitcher";
+import CreateOrder from "./page/CreateOrder";
 
 function App() {
   return (
@@ -101,7 +102,8 @@ function App() {
                     />
                   }
                 >
-                  <Route path="branch" element={<BranchDashboard />} />
+                  {/* <Route path="branch" element={<BranchDashboard />} /> */}
+                  <Route path="create-order" element={<CreateOrder />} />
                 </Route>
 
                 {/* ── Shared dashboard routes (both roles) ── */}

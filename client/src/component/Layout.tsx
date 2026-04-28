@@ -7,6 +7,7 @@ export default function SuperAdminLayout() {
   const { user } = useAuth();
 
   const isSuperAdmin = user?.role === "super_admin";
+  const isBranchAdmin = user?.role === "branch_admin";
 
   return (
     <div className="grid grid-cols-[20%_80%] gap-4 p-4">
@@ -60,6 +61,18 @@ export default function SuperAdminLayout() {
           >
             Create Menu Item
           </NavLink>
+
+          {
+            isBranchAdmin && (
+              <NavLink
+                to="/dashboard/create-order"
+                state={{ from: location.pathname }}
+                className={({ isActive }) => (isActive ? "font-bold" : "")}
+              >
+                Create Order
+              </NavLink>
+            )
+          }
         
 
           <NavLink

@@ -275,7 +275,15 @@ export const createOrderSchema = z.object({
   tableNumber: z.string().optional(),
   customerNotes: z.string().optional(),
   kitchenNotes: z.string().optional(),
-
+  items: z
+    .array(
+      z.object({
+        menuItemId: z.string().uuid("Invalid menu item ID"),
+        quantity: z.number().int().positive("Quantity must be at least 1"),
+        specialInstructions: z.string().optional(),
+      }),
+    )
+    .min(1, "Order must have at least one item"),
 });
 
 // Add Item to Order

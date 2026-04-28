@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 // import api from "../api/axios";
 // import axios from "axios";
 import api from "../api/axios";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 interface user {
   fullName: string;
@@ -15,8 +15,61 @@ interface user {
   branchId?: string;
 }
 
+function getCreateUserErrorMessage(error: unknown): string {
+  if (!error || typeof error !== "object") {
+    return "Failed to create user. Please try again.";
+  }
+
+  const maybeError = error as {
+    message?: string;
+    response?: {
+      data?: {
+        message?: string;
+        error?: string;
+        errors?: string[] | Record<string, string[] | string>;
+      };
+    };
+  };
+
+  const responseData = maybeError.response?.data;
+
+  if (typeof responseData?.message === "string" && responseData.message.trim()) {
+    return responseData.message;
+  }
+
+  if (typeof responseData?.error === "string" && responseData.error.trim()) {
+    return responseData.error;
+  }
+
+  if (Array.isArray(responseData?.errors) && responseData.errors.length > 0) {
+    return responseData.errors.join(", ");
+  }
+
+  if (
+    responseData?.errors &&
+    typeof responseData.errors === "object" &&
+    !Array.isArray(responseData.errors)
+  ) {
+    const flattenedMessages = Object.values(responseData.errors)
+      .flatMap((value) => (Array.isArray(value) ? value : [value]))
+      .filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+
+    if (flattenedMessages.length > 0) {
+      return flattenedMessages.join(", ");
+    }
+  }
+
+  if (typeof maybeError.message === "string" && maybeError.message.trim()) {
+    return maybeError.message;
+  }
+
+  return "Failed to create user. Please try again.";
+}
+
 export default function CreateUser() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from || "/dashboard";
   const {
     register,
     handleSubmit,
@@ -51,7 +104,7 @@ export default function CreateUser() {
 
     onSuccess: () => {
         console.log("User created successfully");
-        navigate('/admin/dashboard')
+        navigate(from, { replace: true });
     },
     onError: (error) => {
       console.error("Failed to create user:", error);
@@ -61,6 +114,9 @@ export default function CreateUser() {
     console.log("Form submitted with data:", data);
     await signup.mutateAsync(data);
   };
+  const createUserErrorMessage = signup.error
+    ? getCreateUserErrorMessage(signup.error)
+    : "";
 
   console.log("CreateUser - branch data:", branches);
   return (
@@ -220,7 +276,7 @@ export default function CreateUser() {
               </button>
               {signup.isError && (
                 <p className="mt-2 text-sm text-red-500">
-                  Failed to create user. Please try again.
+                  {createUserErrorMessage}
                 </p>
               )}
             </div>

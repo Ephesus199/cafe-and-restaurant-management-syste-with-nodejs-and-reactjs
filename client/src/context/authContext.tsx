@@ -123,6 +123,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isAuthenticated: !!(userData || user),
     isPending: loginMutation.isPending,
     role: userData?.role || user?.role || null,
+    branchId: userData?.branchId || user?.branchId || null,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

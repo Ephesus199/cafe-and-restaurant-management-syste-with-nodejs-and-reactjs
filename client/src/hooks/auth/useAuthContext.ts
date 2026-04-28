@@ -13,6 +13,7 @@ export interface AuthContextType {
   }) => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
+  branchId: string | null;
 }
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
