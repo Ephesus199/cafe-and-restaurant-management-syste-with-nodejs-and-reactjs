@@ -106,6 +106,7 @@ function App() {
 
                 {/* ── Shared dashboard routes (both roles) ── */}
                 <Route path="create-menu-item" element={<CreateMenuItem />} />
+                <Route path="create-user" element={<CreateUser />} />
                 <Route path="view-menu" element={<MenuSwitcher />} >
                   <Route path="edit-menu-item/:id" element={<EditMenu />} />
                 </Route>

@@ -60,12 +60,20 @@ export default function SuperAdminLayout() {
           >
             Create Menu Item
           </NavLink>
+        
 
           <NavLink
             to="/dashboard/view-menu"
             className={({ isActive }) => (isActive ? "font-bold" : "")}
           >
             View Menu
+          </NavLink>
+          <NavLink
+            to="/dashboard/create-user"
+            state={{ from: location.pathname }}
+            className={({ isActive }) => (isActive ? "font-bold" : "")}
+          >
+            Create User
           </NavLink>
         </div>
       </div>
