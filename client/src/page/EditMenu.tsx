@@ -1,6 +1,7 @@
 import { useForm, useFieldArray } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import type { AxiosError } from "axios";
 import api from "../api/axios";
 import { useState, useEffect } from "react";
 import { useAuth } from "../hooks/auth/useAuthContext";
@@ -31,11 +32,57 @@ type MenuItemFormData = {
   }[];
 };
 
+type ValidationError = {
+  field?: string;
+  message?: string;
+};
+
+type ErrorResponse = {
+  message?: string;
+  error?: string;
+  errors?: ValidationError[];
+};
+
+const fieldLabels: Record<string, string> = {
+  price: "Price",
+  subcategoryId: "Subcategory",
+  subcategory: "Subcategory",
+  translations: "Menu translations",
+  image: "Image",
+  calories: "Calories",
+  preparationTime: "Preparation time",
+};
+
+const friendlyMessageMap: Record<string, string> = {
+  "Invalid input: expected array, received string":
+    "Menu translations were sent in the wrong format. Please try again.",
+  "Invalid input: expected number, received string":
+    "One of the number fields has an invalid value.",
+};
+
+const toOptionalNumber = (value: unknown): number | undefined => {
+  if (value === null || value === undefined || value === "") return undefined;
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? undefined : parsed;
+};
+
+const toFriendlyFieldName = (field?: string): string | undefined => {
+  if (!field) return undefined;
+  return fieldLabels[field] || field;
+};
+
+const toFriendlyErrorMessage = (message?: string): string => {
+  if (!message) return "Invalid input";
+  return friendlyMessageMap[message] || message;
+};
+
 export default function EditMenu() {
   const { id } = useParams<{ id: string }>();
   const [imageFile, setImageFile] = useState<FileList | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const location = useLocation();
-  const from = location.state?.from || "/admin/dashboard";
+  const from = location.state?.from || "/dashboard/view-menu";
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -99,11 +146,16 @@ export default function EditMenu() {
 
   useEffect(() => {
     if (getMenuItem.data) {
-      const item = getMenuItem.data;
+      const item = getMenuItem.data as Record<string, unknown>;
       
       // Map translations to ensure all languages exist
       const formTranslations = languages.map(lang => {
-        const existingTrans = item.translations?.find((t: { languageCode: string }) => t.languageCode === lang.code);
+        const translations = Array.isArray(item.translations)
+          ? item.translations
+          : [];
+        const existingTrans = translations.find(
+          (t: { languageCode: string }) => t.languageCode === lang.code,
+        );
         return {
           languageCode: lang.code,
           name: existingTrans?.name || "",
@@ -111,11 +163,20 @@ export default function EditMenu() {
         };
       });
 
+      const caloriesValue =
+        toOptionalNumber(item.calories) ??
+        toOptionalNumber(item.calorie) ??
+        toOptionalNumber(item["caloriesValue"]);
+      const preparationTimeValue =
+        toOptionalNumber(item.preparationTime) ??
+        toOptionalNumber(item.preparation_time) ??
+        toOptionalNumber(item["prepTime"]);
+
       reset({
-        price: item.price,
-        calories: item.calories || 0,
-        preparationTime: item.preparationTime || 0,
-        subcategoryId: item.subcategoryId,
+        price: toOptionalNumber(item.price) ?? 0,
+        calories: caloriesValue,
+        preparationTime: preparationTimeValue,
+        subcategoryId: (item.subcategoryId as string) || "",
         translations: formTranslations,
       });
     }
@@ -123,37 +184,63 @@ export default function EditMenu() {
 
   // Mutation
   const updateMenuItemMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      return api.patch(`/menu/items/${id}`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+    mutationFn: async (data: MenuItemFormData) => {
+      const hasNewImage = !!(imageFile && imageFile.length > 0);
+
+      if (hasNewImage) {
+        const formData = new FormData();
+        formData.append("price", data.price.toString());
+        formData.append("subcategoryId", data.subcategoryId);
+        formData.append("calories", data.calories?.toString() || "0");
+        formData.append(
+          "preparationTime",
+          data.preparationTime?.toString() || "0",
+        );
+        formData.append("translations", JSON.stringify(data.translations));
+        formData.append("image", imageFile![0]);
+
+        return api.patch(`/menu/items/${id}`, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+      }
+
+      return api.patch(`/menu/items/${id}`, {
+        ...data,
+        image: undefined,
       });
     },
 
     onSuccess: () => {
+      setFormError(null);
+      setValidationErrors([]);
       navigate(from, { replace: true });
     },
 
     onError: (error) => {
-      console.error(error);
+      const axiosError = error as AxiosError<ErrorResponse>;
+      const responseData = axiosError.response?.data;
+
+      setValidationErrors(
+        Array.isArray(responseData?.errors)
+          ? responseData.errors.map((entry) => ({
+              field: toFriendlyFieldName(entry.field),
+              message: toFriendlyErrorMessage(entry.message),
+            }))
+          : [],
+      );
+      setFormError(
+        toFriendlyErrorMessage(responseData?.message || responseData?.error) ||
+          "Failed to update menu item. Please check your inputs and try again.",
+      );
     },
   });
 
   const onSubmit = (data: MenuItemFormData) => {
-    const formData = new FormData();
-
-    formData.append("price", data.price.toString());
-    formData.append("subcategoryId", data.subcategoryId);
-    formData.append("calories", data.calories?.toString() || "0");
-    formData.append("preparationTime", data.preparationTime?.toString() || "0");
-    formData.append("translations", JSON.stringify(data.translations));
-    
-    if (imageFile && imageFile.length > 0) {
-      formData.append("image", imageFile[0]);
-    }
-
-    updateMenuItemMutation.mutate(formData);
+    setFormError(null);
+    setValidationErrors([]);
+    updateMenuItemMutation.mutate(data);
   };
 
   const isLoading = getSubCategories.isLoading || getMenuItem.isLoading || (isBranchAdmin && getPrivileges.isLoading);
@@ -180,6 +267,22 @@ export default function EditMenu() {
       <h1 className="text-2xl font-bold mb-6">Edit Menu Item</h1>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {formError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+            <p className="font-semibold">{formError}</p>
+            {validationErrors.length > 0 && (
+              <ul className="mt-2 space-y-1 text-sm">
+                {validationErrors.map((error, index) => (
+                  <li key={`${error.field || "error"}-${index}`}>
+                    - {error.field ? `${error.field}: ` : ""}
+                    {error.message || "Invalid input"}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
         
         {/* Price */}
         <div>

@@ -67,7 +67,7 @@ export default function MenuControl() {
 
             return { previousMenuItems };
         },
-        onError: (err, variables, context) => {
+        onError: (_err, _variables, context) => {
             // Roll back to previous state on error
             if (context?.previousMenuItems) {
                 queryClient.setQueryData(["menuItems", lang], context.previousMenuItems);
@@ -119,9 +119,9 @@ export default function MenuControl() {
   );
 
   const handleEdit = (id: string) => {
-    // Navigating to edit page
-    console.log("Edit item:", id);
-    navigate(`/admin/edit-menu-item/${id}`);
+    navigate(`/dashboard/view-menu/edit-menu-item/${id}`, {
+      state: { from: "/dashboard/view-menu" },
+    });
   };
 
   if (isLoadingMain || isLoadingSub || isLoadingMenu) {
@@ -283,6 +283,7 @@ export default function MenuControl() {
           </tbody>
         </table>
       </div>
+     
     </div>
   );
 }

@@ -4,7 +4,6 @@ import QueryProvider from "./providers/queryProvider";
 import { AuthProvider } from "./context/authContext";
 import ProtectedRoute from "./component/ProtectedRoute";
 import CreateUser from "./page/CreateUser";
-import SuperAdminDashboard from "./page/SuperAdminDashboard";
 import ForgotPassword from "./page/ForgotPassword";
 import ResetPassword from "./page/RestPassword";
 import CreateBranch from "./page/CreateBranch";
@@ -17,34 +16,65 @@ import CreateMenuItem from "./page/CreateMenuItem";
 import EditMenu from "./page/EditMenu";
 import BranchDashboard from "./page/BranchDashboard";
 import Menu from "./page/Menu";
-import SuperAdminLayout from "./component/SuperAdminLayout";
-import ViewAllMenu from "./page/ViewAllMenu";
+import SuperAdminLayout from "./component/Layout";
+// import ViewAllMenu from "./page/ViewAllMenu";
+// import SuperAdminDashboard from "./page/SuperAdminDashboard";
+import DashboardSwitcher from "./component/DashboardSwitcher";
+import MenuSwitcher from "./component/MenuSwitcher";
 
 function App() {
   return (
-    <>
-      <QueryProvider>
-        <BrowserRouter>
-          <AuthProvider>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/menu/:branchId" element={<Menu />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route
-                element={<ProtectedRoute allowedRoles={["super_admin"]} />}
-              >
-                <Route path="admin/dashboard"   element={<SuperAdminLayout />}>
-                  <Route index  element={<SuperAdminDashboard />} />
-                  <Route
-                    path="create-branch"
-                    element={<CreateBranch />} // Make sure to import CreateBranch component
-                  />
+    <QueryProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
+            {/* ── Public routes ── */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/menu/:branchId" element={<Menu />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+
+            {/* ── Dashboard shell (super_admin + branch_admin) ── */}
+            <Route
+              element={
+                <ProtectedRoute
+                  allowedRoles={["super_admin", "branch_admin"]}
+                />
+              }
+            >
+              <Route path="/dashboard" element={<SuperAdminLayout />}>
+                <Route index element={<DashboardSwitcher />} />
+                {/*
+                 * Index route: render the correct dashboard per role.
+                 * SuperAdminDashboard guards itself with showUnauthorized so
+                 * branch_admin sees "Access Denied" inline rather than a blank page.
+                 * BranchDashboard is reached only by branch_admin via the
+                 * nested protected route below.
+                 *
+                 * HOW IT WORKS:
+                 * - super_admin  → hits index → passes super_admin guard → SuperAdminDashboard
+                 * - branch_admin → hits index → blocked by super_admin guard (showUnauthorized)
+                 *                → "Access Denied" shown inline inside the layout shell
+                 *
+                 * If you'd prefer branch_admin to land on BranchDashboard automatically,
+                 * use a <DashboardSwitcher> component as the index element that reads the
+                 * role from context and renders the right component — no extra routes needed.
+                 */}
+
+                {/* ── Super-admin-only routes (showUnauthorized keeps layout shell) ── */}
+                <Route
+                  element={
+                    <ProtectedRoute
+                      allowedRoles={["super_admin"]}
+                      showUnauthorized
+                    />
+                  }
+                >
+                  <Route path="create-branch" element={<CreateBranch />} />
                   <Route
                     path="branches/:id/update"
                     element={<UpdateBranch />}
                   />
-
                   <Route
                     path="create-main-category"
                     element={<CreateCategory />}
@@ -53,65 +83,72 @@ function App() {
                     path="create-sub-category"
                     element={<CreateSubCategory />}
                   />
-                  <Route
-                    path="create-menu-item"
-                    element={<CreateMenuItem />}
-                  />
-                  <Route
-                    path="view-menu"
-                    element={<ViewAllMenu />}
-                  />
+                </Route>
+
+                {/* ── Branch-admin-only route ── */}
+                {/*
+                 * branch_admin navigates to /dashboard and hits the index above which
+                 * shows "Access Denied". To give branch_admin their own home page,
+                 * link them to /dashboard/branch or use a DashboardSwitcher index.
+                 *
+                 * Alternatively, keep the route below and use a DashboardSwitcher at index.
+                 */}
+                <Route
+                  element={
+                    <ProtectedRoute
+                      allowedRoles={["branch_admin"]}
+                      showUnauthorized
+                    />
+                  }
+                >
+                  <Route path="branch" element={<BranchDashboard />} />
+                </Route>
+
+                {/* ── Shared dashboard routes (both roles) ── */}
+                <Route path="create-menu-item" element={<CreateMenuItem />} />
+                <Route path="view-menu" element={<MenuSwitcher />} >
+                  <Route path="edit-menu-item/:id" element={<EditMenu />} />
                 </Route>
               </Route>
-              <Route
-                element={<ProtectedRoute allowedRoles={["branch_admin"]} />}
-              >
-                <Route path="/branch/dashboard" element={<BranchDashboard />} />
-              </Route>
-              <Route
-                element={<ProtectedRoute allowedRoles={["super_admin"]} />}
-              ></Route>
+            </Route>
 
-              <Route
-                element={
-                  <ProtectedRoute
-                    allowedRoles={["super_admin", "branch_admin"]}
-                  />
-                }
-              >
-                <Route path="/create-user" element={<CreateUser />} />
-
-                <Route
-                  path="/admin/edit-menu-item/:id"
-                  element={<EditMenu />}
+            {/* ── Other protected routes outside the dashboard layout ── */}
+            <Route
+              element={
+                <ProtectedRoute
+                  allowedRoles={["super_admin", "branch_admin"]}
                 />
-              </Route>
+              }
+            >
+              <Route path="/create-user" element={<CreateUser />} />
+              {/* <Route path="/admin/edit-menu-item/:id" element={<EditMenu />} /> */}
+            </Route>
 
-              <Route
-                element={
-                  <ProtectedRoute
-                    allowedRoles={[
-                      "super_admin",
-                      "branch_admin",
-                      "store_manager",
-                      "waiter",
-                      "cashier",
-                      "staff",
-                    ]}
-                  />
-                }
-              >
-                <Route path="/profile/:id" element={<Profile />} />
-                <Route
-                  path="/profile/:id/change-password"
-                  element={<ChangePassword />}
+            {/* ── Profile (all staff roles) ── */}
+            <Route
+              element={
+                <ProtectedRoute
+                  allowedRoles={[
+                    "super_admin",
+                    "branch_admin",
+                    "store_manager",
+                    "waiter",
+                    "cashier",
+                    "staff",
+                  ]}
                 />
-              </Route>
-            </Routes>
-          </AuthProvider>
-        </BrowserRouter>
-      </QueryProvider>
-    </>
+              }
+            >
+              <Route path="/profile/:id" element={<Profile />} />
+              <Route
+                path="/profile/:id/change-password"
+                element={<ChangePassword />}
+              />
+            </Route>
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryProvider>
   );
 }
 

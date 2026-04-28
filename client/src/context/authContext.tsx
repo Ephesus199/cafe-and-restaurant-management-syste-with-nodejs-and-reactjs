@@ -71,8 +71,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // Redirect based on role
       const roleRedirects: Record<string, string> = {
-        super_admin: "/admin/dashboard",
-        branch_admin: "/branch/dashboard",
+        super_admin: "/dashboard",
+        branch_admin: "/dashboard",
         store_manager: "/branch/inventory",
         waiter: "/branch/orders",
         cashier: "/branch/orders",

@@ -227,8 +227,8 @@ export default function ViewAllMenu() {
                                             type="button"
                                             className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
                                             onClick={() =>
-                                                navigate(`/admin/edit-menu-item/${item.id}`, {
-                                                    state: { from: "/admin/dashboard/view-menu" },
+                                                navigate(`/dashboard/view-menu/edit-menu-item/${item.id}`, {
+                                                    state: { from: "/dashboard/view-menu" },
                                                 })
                                             }
                                         >

@@ -144,7 +144,10 @@ export const createMenuItemSchema = z.object({
     .array(
       z.object({
         languageCode: z.enum(["en", "am", "oro"]),
-        name: z.string().min(3, "Translation name must be at least 3 characters").max(200, "Translation name cannot exceed 200 characters"),
+        name: z
+          .string()
+          .min(3, "Translation name must be at least 3 characters")
+          .max(200, "Translation name cannot exceed 200 characters"),
         description: z.string().optional(),
       }),
     )
@@ -159,17 +162,9 @@ export const createMenuItemSchema = z.object({
   //   .max(1000, "Description cannot exceed 1000 characters")
   //   .optional(),
 
-  calories: z
-    .number()
-    .int("Calories must be a whole number")
-    .positive()
-    .optional(),
+  calories: z.coerce.number().positive("Calories must be greater than 0"),
 
-  preparationTime: z
-    .number()
-    .int("Preparation time must be a whole number")
-    .positive()
-    .optional(),
+  preparationTime: z.coerce.number().positive("Preparation time must be greater than 0"),
 
   subcategoryId: z.string().uuid("Invalid subcategory ID"),
 
@@ -180,14 +175,18 @@ export const updateMenuItemSchema = z.object({
   translations: z
     .array(
       z.object({
-        languageCode: z.enum(["en", "am", "ar"]),
-        name: z.string().min(3, "Translation name must be at least 3 characters").max(200, "Translation name cannot exceed 200 characters"),
+        languageCode: z.enum(["en", "am", "oro"]),
+        name: z
+          .string()
+          .min(3, "Translation name must be at least 3 characters")
+          .max(200, "Translation name cannot exceed 200 characters"),
         description: z.string().optional(),
       }),
     )
-    .min(1, "At least one translation is required").optional(),
+    .min(1, "At least one translation is required")
+    .optional(),
 
-  price: z.number().positive("Price must be greater than 0").optional(),
+  price: z.coerce.number().positive("Price must be greater than 0").optional(),
 
   // imageUrl: z.string().url("Invalid image URL").optional(),
 
@@ -196,17 +195,9 @@ export const updateMenuItemSchema = z.object({
     .max(1000, "Description cannot exceed 1000 characters")
     .optional(),
 
-  calories: z
-    .number()
-    .int("Calories must be a whole number")
-    .positive()
-    .optional(),
+  calories: z.coerce.number().positive("Calories must be greater than 0"),
 
-  preparationTime: z
-    .number()
-    .int("Preparation time must be a whole number")
-    .positive()
-    .optional(),
+  preparationTime: z.coerce.number().positive("Preparation time must be greater than 0"),
 });
 
 // ====================== AVAILABILITY ======================
