@@ -80,6 +80,7 @@ router.get("/branch/full-menu", authorizeRoles("branch_admin"), getMenuForBranch
 router.patch(
   "/items/:id",
   authorizeRoles("super_admin", "branch_admin"),
+  parseMenuItemFormData,
   validate(updateMenuItemSchema),
   updateMenuItem,
 );

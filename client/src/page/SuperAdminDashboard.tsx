@@ -1,7 +1,8 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+// import { stat } from "fs";
 
 type BranchPrivileges = {
   canEditName: boolean;
@@ -50,6 +51,8 @@ type MenuItem = {
 };
 
 export default function SuperAdminDashboard() {
+  const location = useLocation();
+  console.log("SuperAdminDashboard - location:", location);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"branches" | "menu">("branches");
@@ -312,7 +315,7 @@ export default function SuperAdminDashboard() {
                           type="button"
                           className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
                           onClick={() =>
-                            navigate(`/admin/dashboard/branches/${branch.id}/update`)
+                            navigate(`/dashboard/branches/${branch.id}/update`, { state: { from: location.pathname } })
                           }
                         >
                           Edit

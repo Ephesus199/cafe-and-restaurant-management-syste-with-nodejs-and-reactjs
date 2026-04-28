@@ -1,5 +1,5 @@
 import { useForm, useFieldArray } from "react-hook-form";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { AxiosError } from "axios";
 import api from "../api/axios";
@@ -78,6 +78,7 @@ const toFriendlyErrorMessage = (message?: string): string => {
 
 export default function EditMenu() {
   const { id } = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
   const [imageFile, setImageFile] = useState<FileList | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
@@ -142,6 +143,8 @@ export default function EditMenu() {
       return res.data.data;
     },
     enabled: !!id,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   useEffect(() => {
@@ -212,7 +215,18 @@ export default function EditMenu() {
       });
     },
 
-    onSuccess: () => {
+    onSuccess: async (response) => {
+      const updatedItem = response?.data?.data;
+      if (id && updatedItem) {
+        queryClient.setQueryData(["menuItem", id], updatedItem);
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["menuItem", id] }),
+        queryClient.invalidateQueries({ queryKey: ["menuItems"] }),
+        queryClient.invalidateQueries({ queryKey: ["allMenuItems"] }),
+      ]);
+
       setFormError(null);
       setValidationErrors([]);
       navigate(from, { replace: true });

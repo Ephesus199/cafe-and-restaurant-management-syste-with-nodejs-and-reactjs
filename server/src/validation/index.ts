@@ -162,9 +162,9 @@ export const createMenuItemSchema = z.object({
   //   .max(1000, "Description cannot exceed 1000 characters")
   //   .optional(),
 
-  calories: z.coerce.number().positive("Calories must be greater than 0"),
+  calories: z.coerce.number().positive("Calories must be greater than 0").optional(),
 
-  preparationTime: z.coerce.number().positive("Preparation time must be greater than 0"),
+  preparationTime: z.coerce.number().positive("Preparation time must be greater than 0").optional(),
 
   subcategoryId: z.string().uuid("Invalid subcategory ID"),
 
@@ -198,7 +198,10 @@ export const updateMenuItemSchema = z.object({
   calories: z.coerce.number().positive("Calories must be greater than 0"),
 
   preparationTime: z.coerce.number().positive("Preparation time must be greater than 0"),
-});
+
+  subcategoryId: z.string().uuid("Invalid subcategory ID").optional(),
+  defaultAvailable: z.boolean().optional(),
+}).strict();
 
 // ====================== AVAILABILITY ======================
 export const toggleAvailabilitySchema = z.object({

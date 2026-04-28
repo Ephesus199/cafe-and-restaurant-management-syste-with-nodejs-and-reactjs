@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import api from "../api/axios";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -37,6 +37,7 @@ interface BranchDetails {
 
 export default function UpdateBranch() {
   const { id } = useParams();
+  const location = useLocation();
   const { register, handleSubmit, reset } = useForm<BranchDetails>({
     defaultValues: {
       privileges: {
@@ -58,6 +59,8 @@ export default function UpdateBranch() {
       const res = await api.get(`/branches/${id}`);
       return res.data.data as BranchDetails;
     },
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const updateBranchMutation = useMutation({
@@ -65,7 +68,7 @@ export default function UpdateBranch() {
       await api.put(`/branches/${id}`, data);
     },
     onSuccess: () => {
-      navigate("/admin/dashboard", { replace: true });
+      navigate(location.state?.from || "/dashboard", { replace: true });
     },
     onError: (error) => {
       console.error("Failed to update branch:", error);

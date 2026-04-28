@@ -6,9 +6,13 @@ export const parseMenuItemFormData = (
   next: NextFunction,
 ) => {
   try {
+    if (typeof req.body.translations === "string") {
       req.body.translations = JSON.parse(req.body.translations);
-    //  console.log("image file in middleware: ", req.files);
-    req.body.price = Number(req.body.price);
+    }
+
+    if (req.body.price !== undefined) {
+      req.body.price = Number(req.body.price);
+    }
 
     req.body.calories = req.body.calories
       ? Number(req.body.calories)
