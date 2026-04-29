@@ -7,6 +7,7 @@ import {
   markOrderPaid,
   getOrdersByBranch,
   getOrderById,
+  viewOrders,
 } from "../controllers/orderController";
 import { validate } from "../middleware/validateMiddleware";
 import {
@@ -22,10 +23,10 @@ const router = Router();
 router.use(protect);
 
 // ==================== CREATE ORDER ====================
-// Waiters (and branch admins) can create orders
+// Waiter and cashier can create orders
 router.post(
   "/",
-  authorizeRoles("waiter", "branch_admin"),
+  authorizeRoles("waiter", "cashier"),
   validate(createOrderSchema),
   createOrder,
 );
@@ -33,7 +34,7 @@ router.post(
 // ==================== ADD ITEM TO ORDER ====================
 router.post(
   "/orders/:orderId/items",
-  authorizeRoles("waiter", "branch_admin"),
+  authorizeRoles("waiter", "cashier"),
   validate(addOrderItemSchema),
   addOrderItem,
 );
@@ -57,17 +58,17 @@ router.patch(
 );
 
 // ==================== GET ORDERS ====================
-// Get all orders for a branch
-// router.get(
-//   "/branches/:branchId/orders",
-//   authorizeRoles("branch_admin", "waiter", "cashier"),
-//   getOrdersByBranch,
-// );
+// Get orders with role-based filtering
+router.get(
+  "/view",
+  authorizeRoles("waiter", "branch_admin", "cashier", "super_admin"),
+  viewOrders,
+);
 
 // Get single order details
 router.get(
   "/orders/:orderId",
-  authorizeRoles("branch_admin", "waiter", "cashier", "chef"),
+  authorizeRoles("branch_admin", "waiter", "cashier", "chef", "super_admin"),
   getOrderById,
 );
 

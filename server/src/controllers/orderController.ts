@@ -7,18 +7,60 @@ import {
   addOrderItemSchema,
   updateOrderStatusSchema,
   markOrderPaidSchema,
+  viewOrdersQuerySchema,
 } from "../validation/index";
 
 // Create New Order (by Waiter)
 export const createOrder = async (req: AuthRequest, res: Response) => {
   try {
     const data = createOrderSchema.parse(req.body);
-    const waiter = req.user!;
+    const actor = req.user!;
 
-    if (waiter.role !== "waiter" && waiter.role !== "branch_admin") {
+    // Determine which waiter the order should belong to.
+    // - waiter: order belongs to themselves
+    // - cashier: order belongs to the selected waiterId
+    let targetWaiterId: string;
+    if (actor.role === "waiter") {
+      // Waiters must create orders for themselves.
+      if (!data.waiterId || data.waiterId !== actor.id) {
+        return res.status(403).json({
+          success: false,
+          message: "Invalid waiterId for the current waiter",
+        });
+      }
+
+      targetWaiterId = actor.id;
+    } else if (actor.role === "cashier") {
+      if (!actor.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: "Cashier is not associated with a branch",
+        });
+      }
+
+      // Validate selected waiter is in the same branch and is actually a waiter.
+      const selectedWaiter = await prisma.user.findFirst({
+        where: {
+          id: data.waiterId,
+          role: "waiter",
+          deletedAt: null,
+          branchId: actor.branchId,
+        },
+        select: { id: true },
+      });
+
+      if (!selectedWaiter) {
+        return res.status(403).json({
+          success: false,
+          message: "Selected waiter is not valid for this branch",
+        });
+      }
+
+      targetWaiterId = data.waiterId;
+    } else {
       return res
         .status(403)
-        .json({ success: false, message: "Only waiters can create orders" });
+        .json({ success: false, message: "Only waiters and cashiers can create orders" });
     }
 
     const menuItemIds = data.items.map((item) => item.menuItemId);
@@ -62,8 +104,10 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
     const order = await prisma.$transaction(async (tx) => {
       const createdOrder = await tx.order.create({
         data: {
-          branchId: waiter.branchId!,
-          waiterId: waiter.id,
+          branchId: actor.branchId!,
+          waiterId: targetWaiterId,
+          // Only cashiers should set cashierId; waiter-created orders keep it NULL.
+          ...(actor.role === "cashier" ? { cashierId: actor.id } : { cashierId: null }),
           tableNumber: data.tableNumber ?? null,
           customerNotes: data.customerNotes ?? null,
           kitchenNotes: data.kitchenNotes ?? null,
@@ -120,8 +164,24 @@ export const addOrderItem = async (req: AuthRequest, res: Response) => {
         .json({ success: false, message: "Order not found" });
     }
 
-    // Check if user is authorized (waiter who created it or branch admin)
-    if (req.user!.role !== "waiter" && req.user!.role !== "branch_admin") {
+    // Check if user is authorized
+    const actor = req.user!;
+    if (actor.role !== "waiter" && actor.role !== "cashier") {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    // cashier can only add items to orders created by them
+    // waiter can only add items to orders they own
+    if (actor.role === "waiter") {
+      if (order.waiterId !== actor.id) {
+        return res.status(403).json({ success: false, message: "Unauthorized" });
+      }
+    } else if (actor.role === "cashier") {
+      if (order.cashierId !== actor.id) {
+        return res.status(403).json({ success: false, message: "Unauthorized" });
+      }
+    } else {
+      // branch_admin and other roles are not allowed by route middleware
       return res.status(403).json({ success: false, message: "Unauthorized" });
     }
 
@@ -283,6 +343,8 @@ export const getOrderById = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ success: false, message: "Order ID is required" });
         }
 
+        const currentUser = req.user!;
+
         const order = await prisma.order.findUnique({
             where: { id: orderId },
             include: {
@@ -294,8 +356,27 @@ export const getOrderById = async (req: AuthRequest, res: Response) => {
                 waiter: {
                     select: { fullName: true },
                 },
+                cashier: {
+                    select: { fullName: true },
+                },
             },
         });
+
+        if (!order || order.deletedAt) {
+            return res.status(404).json({ success: false, message: "Order not found" });
+        }
+
+        // Enforce role-based access for order details
+        if (currentUser.role === "waiter" && order.waiterId !== currentUser.id) {
+            return res.status(403).json({ success: false, message: "Access denied" });
+        }
+
+        if (
+          (currentUser.role === "branch_admin" || currentUser.role === "cashier") &&
+          order.branchId !== currentUser.branchId
+        ) {
+          return res.status(403).json({ success: false, message: "Access denied" });
+        }
 
         res.json({
             success: true,
@@ -304,4 +385,194 @@ export const getOrderById = async (req: AuthRequest, res: Response) => {
     } catch (error) {
         res.status(500).json({ success: false, message: "Failed to fetch order details" });
     }
+};
+
+// ========================= VIEW ORDERS =========================
+// GET /api/orders/view
+// Role-based rules:
+// - waiter: sees only their own orders, for today only
+// - branch_admin/cashier: sees orders for the selected waiter in their own branch, with day/week/month filters
+// - super_admin: selects branch and waiter, then sees with day/week/month filters
+export const viewOrders = async (req: AuthRequest, res: Response) => {
+  try {
+    const query = viewOrdersQuerySchema.parse(req.query);
+    const currentUser = req.user!;
+
+    const toLocalISODate = (d: Date) => {
+      const pad = (n: number) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    };
+
+    const parseLocalDate = (dateStr?: string) => {
+      if (!dateStr) return new Date();
+      // Ensure local-time parsing by appending time component without timezone.
+      const parsed = new Date(`${dateStr}T00:00:00`);
+      if (Number.isNaN(parsed.getTime())) return new Date();
+      return parsed;
+    };
+
+    const startOfDay = (d: Date) => {
+      const x = new Date(d);
+      x.setHours(0, 0, 0, 0);
+      return x;
+    };
+
+    const endOfDay = (d: Date) => {
+      const x = new Date(d);
+      x.setHours(23, 59, 59, 999);
+      return x;
+    };
+
+    const addDays = (d: Date, days: number) => {
+      const x = new Date(d);
+      x.setDate(x.getDate() + days);
+      return x;
+    };
+
+    // Monday-Sunday week range.
+    const getWeekRange = (reference: Date) => {
+      const ref = startOfDay(reference);
+      const day = ref.getDay(); // 0 (Sun) - 6 (Sat)
+      const diffToMonday = day === 0 ? -6 : 1 - day;
+      const monday = addDays(ref, diffToMonday);
+      const sunday = addDays(monday, 6);
+      return { gte: monday, lte: endOfDay(sunday) };
+    };
+
+    const getMonthRange = (reference: Date) => {
+      const ref = reference;
+      const first = new Date(ref.getFullYear(), ref.getMonth(), 1);
+      const last = new Date(ref.getFullYear(), ref.getMonth() + 1, 0);
+      return { gte: startOfDay(first), lte: endOfDay(last) };
+    };
+
+    const resolvedPeriod: "day" | "week" | "month" =
+      currentUser.role === "waiter" ? "day" : query.period;
+
+    // Defaults: today
+    const today = new Date();
+    const resolvedDateStr =
+      currentUser.role === "waiter" ? toLocalISODate(today) : query.date || toLocalISODate(today);
+
+    let branchId: string;
+    let waiterId: string;
+
+    if (currentUser.role === "waiter") {
+      branchId = currentUser.branchId!;
+      waiterId = currentUser.id;
+    } else if (currentUser.role === "branch_admin" || currentUser.role === "cashier") {
+      branchId = currentUser.branchId!;
+
+      const selectedWaiterId = query.waiterId;
+      if (!selectedWaiterId) {
+        return res.status(400).json({
+          success: false,
+          message: "Please select a waiter to view orders.",
+        });
+      }
+
+      waiterId = selectedWaiterId;
+    } else if (currentUser.role === "super_admin") {
+      if (!query.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: "Please select a branch to view orders.",
+        });
+      }
+      if (!query.waiterId) {
+        return res.status(400).json({
+          success: false,
+          message: "Please select a waiter to view orders.",
+        });
+      }
+
+      branchId = query.branchId;
+      waiterId = query.waiterId;
+    } else {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
+    // Confirm waiter belongs to the resolved branch (and is a waiter).
+    const selectedWaiter = await prisma.user.findFirst({
+      where: {
+        id: waiterId,
+        role: "waiter",
+        deletedAt: null,
+        branchId,
+      },
+      select: {
+        id: true,
+        branchId: true,
+        role: true,
+      },
+    });
+
+    if (!selectedWaiter) {
+      return res.status(403).json({
+        success: false,
+        message: "Selected waiter is not valid for the current branch/role.",
+      });
+    }
+
+    const referenceDate = parseLocalDate(resolvedDateStr);
+
+    const range =
+      resolvedPeriod === "day"
+        ? { gte: startOfDay(referenceDate), lte: endOfDay(referenceDate) }
+        : resolvedPeriod === "week"
+          ? getWeekRange(referenceDate)
+          : getMonthRange(referenceDate);
+
+    const orders = await prisma.order.findMany({
+      where: {
+        branchId,
+        waiterId,
+        deletedAt: null,
+        createdAt: {
+          gte: range.gte,
+          lte: range.lte,
+        },
+      },
+      include: {
+        items: {
+          select: {
+            id: true,
+            quantity: true,
+            specialInstructions: true,
+            subtotal: true,
+            menuItem: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+              },
+            },
+          },
+        },
+        waiter: {
+          select: { fullName: true },
+        },
+        cashier: {
+          select: { fullName: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json({
+      success: true,
+      data: orders,
+      meta: {
+        period: resolvedPeriod,
+        date: resolvedDateStr,
+        from: range.gte.toISOString(),
+        to: range.lte.toISOString(),
+      },
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error?.message || "Failed to fetch orders",
+    });
+  }
 };

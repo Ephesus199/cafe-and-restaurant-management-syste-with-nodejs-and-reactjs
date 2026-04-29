@@ -34,7 +34,13 @@ export const authorizeRoles = (...allowedRoles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-    if (!allowedRoles.includes(req.user.role)) {
+    // Normalize roles to avoid casing/whitespace mismatches.
+    const currentRole = String(req.user.role ?? "").trim().toLowerCase();
+    const normalizedAllowedRoles = allowedRoles.map((r) =>
+      String(r).trim().toLowerCase(),
+    );
+
+    if (!normalizedAllowedRoles.includes(currentRole)) {
       return res
         .status(403)
         .json({ message: "Access denied. Insufficient permissions." });

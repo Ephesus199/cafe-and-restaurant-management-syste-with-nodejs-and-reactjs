@@ -26,6 +26,7 @@ export default function SuperAdminLayout() {
           >
             Dashboard
           </NavLink>
+    
 
           {/* ── Super-admin-only links ── */}
           {isSuperAdmin && (
@@ -36,6 +37,7 @@ export default function SuperAdminLayout() {
               >
                 Create Branch
               </NavLink>
+              
 
               <NavLink
                 to="/dashboard/create-main-category"
@@ -80,6 +82,12 @@ export default function SuperAdminLayout() {
             className={({ isActive }) => (isActive ? "font-bold" : "")}
           >
             View Menu
+          </NavLink>
+          <NavLink
+            to="/dashboard/orders"
+            className={({ isActive }) => (isActive ? "font-bold" : "")}
+          >
+            View Orders
           </NavLink>
           <NavLink
             to="/dashboard/create-user"

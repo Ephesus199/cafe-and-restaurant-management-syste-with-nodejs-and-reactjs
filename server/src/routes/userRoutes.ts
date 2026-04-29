@@ -5,7 +5,15 @@ import { createUserSchema, updateUserSchema } from "../validation";
 
 
 import { protect, authorizeRoles } from "../middleware/authMiddleware";
-import { createUser,  updateUser, deleteUser, getUserById, getUsers, restoreUser } from "../controllers/userController";
+import {
+  createUser,
+  updateUser,
+  deleteUser,
+  getUserById,
+  getUsers,
+  restoreUser,
+  getWaiters,
+} from "../controllers/userController";
 
 const router = express.Router();
 // All user routes require authentication
@@ -16,14 +24,24 @@ router.use(protect)
 // Branch Admin can only see users in their own branch
 router.get(
   '/', 
-  authorizeRoles('super_admin', 'branch_admin'), 
+  authorizeRoles("cashier", "super_admin", "branch_admin"), 
   getUsers
 )
 
-// ==================== GET SINGLE USER ====================
+// ==================== GET WAITERS ====================
+// For cashier/branch_admin selection.
+// - non-super-admins can only see waiters from their own branch
 router.get(
-  '/:id', 
-  authorizeRoles('super_admin', 'branch_admin'), 
+  "/waiters",
+  authorizeRoles("cashier", "branch_admin", "super_admin"),
+  getWaiters,
+);
+
+// ==================== GET SINGLE USER ====================
+// Must be declared AFTER the "/waiters" route to avoid "/waiters" matching "/:id".
+router.get(
+  '/:id',
+  authorizeRoles('super_admin', 'branch_admin'),
   getUserById
 )
 

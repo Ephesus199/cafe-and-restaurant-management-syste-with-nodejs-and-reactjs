@@ -275,6 +275,9 @@ export const createOrderSchema = z.object({
   tableNumber: z.string().optional(),
   customerNotes: z.string().optional(),
   kitchenNotes: z.string().optional(),
+  // cashier creates an order for a selected waiter
+  // waiter creates an order for themselves
+  waiterId: z.string().uuid("Invalid waiter ID"),
   items: z
     .array(
       z.object({
@@ -304,4 +307,18 @@ export const updateOrderStatusSchema = z.object({
 export const markOrderPaidSchema = z.object({
   paymentMethod: z.enum(["cash", "card", "upi", "other"]),
 
+});
+
+// ====================== VIEW ORDERS ======================
+// Role-based filtering is enforced in the controller.
+// Query params:
+// - period: day | week | month
+// - date: YYYY-MM-DD (reference date; backend calculates the range)
+// - branchId: required for super_admin
+// - waiterId: required for branch_admin/super_admin
+export const viewOrdersQuerySchema = z.object({
+  period: z.enum(["day", "week", "month"]).optional().default("day"),
+  date: z.string().optional(),
+  branchId: z.string().uuid().optional(),
+  waiterId: z.string().uuid().optional(),
 });

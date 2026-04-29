@@ -113,10 +113,16 @@ export const getUsers = async (req: AuthRequest, res: Response) => {
 
     let whereClause: any = { deletedAt: null };
 
+    const roleString = Array.isArray(role) ? role[0] : role;
+    const branchIdString = Array.isArray(branchId) ? branchId[0] : branchId;
+
     if (currentUser.role === "branch_admin") {
       whereClause.branchId = currentUser.branchId;
-    } else if (role) {
-      whereClause.role = role;
+    } else if (roleString) {
+      whereClause.role = roleString;
+      if (currentUser.role === "super_admin" && typeof branchIdString === "string") {
+        whereClause.branchId = branchIdString;
+      }
     }
 
     const users = await prisma.user.findMany({
@@ -140,6 +146,55 @@ export const getUsers = async (req: AuthRequest, res: Response) => {
     });
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch users" });
+  }
+};
+
+// ==================== GET WAITERS (FOR CASHIER / BRANCH ADMIN) ====================
+// Returns waiters in the caller's branch.
+// - super_admin: may optionally pass ?branchId=
+// - others: always uses req.user.branchId (no cross-branch access)
+export const getWaiters = async (req: AuthRequest, res: Response) => {
+  try {
+    const currentUser = req.user!;
+    const roleFilter = "waiter" as const;
+
+    const queryBranchId = Array.isArray(req.query.branchId)
+      ? req.query.branchId[0]
+      : req.query.branchId;
+
+    const branchIdToUse =
+      currentUser.role === "super_admin" && typeof queryBranchId === "string"
+        ? queryBranchId
+        : currentUser.branchId;
+
+    if (!branchIdToUse) {
+      return res.status(400).json({
+        success: false,
+        message: "User is not associated with any branch",
+      });
+    }
+
+    const waiters = await prisma.user.findMany({
+      where: {
+        deletedAt: null,
+        role: roleFilter,
+        branchId: branchIdToUse,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        fullName: true,
+        username: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json({
+      success: true,
+      data: waiters,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch waiters" });
   }
 };
 

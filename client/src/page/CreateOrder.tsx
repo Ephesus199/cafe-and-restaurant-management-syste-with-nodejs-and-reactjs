@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useFieldArray, useForm } from "react-hook-form";
+import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import { useAuth } from "../hooks/auth/useAuthContext";
@@ -20,6 +21,7 @@ type CreateOrderForm = {
   tableNumber: string;
   kitchenNotes: string;
   customerNotes: string;
+  waiterId: string;
   items: OrderItemForm[];
 };
 
@@ -41,7 +43,7 @@ function getCreateOrderErrorMessage(error: unknown): string {
 
 export default function CreateOrder() {
   const navigate = useNavigate();
-  const { branchId } = useAuth();
+  const { branchId, role, user } = useAuth();
   const location = useLocation();
   const from = (location.state as { from?: string | { pathname?: string } } | null)?.from;
 
@@ -53,12 +55,21 @@ export default function CreateOrder() {
         tableNumber: "",
         kitchenNotes: "",
         customerNotes: "",
+        waiterId: "",
         items: [createEmptyOrderItem()],
       },
     });
 
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
   const items = watch("items") ?? [];
+
+  // Waiters must create orders for themselves.
+  // We auto-fill `waiterId` so it is always present for backend validation.
+  useEffect(() => {
+    if (role === "waiter" && user?.id) {
+      setValue("waiterId", user.id, { shouldValidate: true });
+    }
+  }, [role, user?.id, setValue]);
 
   const { data: mainCategoriesData, isLoading: isMainLoading } = useQuery({
     queryKey: ["mainCategories", "en"],
@@ -87,11 +98,22 @@ export default function CreateOrder() {
   const subcategories: Subcategory[] = subcategoriesData?.data || [];
   const menuItems: MenuItem[] = menuItemsData?.data || [];
 
+  const { data: waitersData, isLoading: isWaitersLoading } = useQuery({
+    queryKey: ["waitersForCreateOrder", branchId],
+    enabled: role === "cashier" && Boolean(branchId),
+    queryFn: async () => {
+      const res = await api.get("/users/waiters");
+      if (!res.data.success) throw new Error(res.data.message || "Failed to load waiters");
+      return res.data.data as Array<{ id: string; fullName: string | null }>;
+    },
+  });
+
   const createOrderMutation = useMutation({
     mutationFn: async (payload: {
       tableNumber?: string;
       kitchenNotes?: string;
       customerNotes?: string;
+      waiterId?: string;
       items: Array<{ menuItemId: string; quantity: number; specialInstructions?: string }>;
     }) => (await api.post("/orders", payload)).data,
     onSuccess: () => {
@@ -114,6 +136,7 @@ export default function CreateOrder() {
       tableNumber: data.tableNumber.trim() || undefined,
       kitchenNotes: data.kitchenNotes.trim() || undefined,
       customerNotes: data.customerNotes.trim() || undefined,
+      waiterId: data.waiterId,
       items: data.items.map((item) => ({
         menuItemId: item.menuItemId,
         quantity: Number(item.quantity),
@@ -150,6 +173,42 @@ export default function CreateOrder() {
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {role === "cashier" && (
+              <div>
+                <label
+                  htmlFor="waiterId"
+                  className="block mb-2 text-sm font-semibold text-gray-700"
+                >
+                  Assign to waiter
+                </label>
+                {isWaitersLoading ? (
+                  <div className="text-sm text-gray-500">Loading waiters...</div>
+                ) : (
+                  <select
+                    id="waiterId"
+                    {...register("waiterId", {
+                      required: role === "cashier" ? "Please select a waiter" : false,
+                    })}
+                    className="w-full border border-gray-300 rounded-lg p-3 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select a waiter</option>
+                    {(waitersData || []).map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.fullName || w.id}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {errors.waiterId && (
+                  <p className="mt-1 text-sm text-red-500">{errors.waiterId.message}</p>
+                )}
+              </div>
+            )}
+
+            {role === "waiter" && (
+              <input type="hidden" {...register("waiterId")} />
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label htmlFor="tableNumber" className="block mb-2 text-sm font-semibold text-gray-700">Table Number</label>

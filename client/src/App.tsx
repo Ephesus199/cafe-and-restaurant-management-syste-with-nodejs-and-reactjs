@@ -22,6 +22,7 @@ import SuperAdminLayout from "./component/Layout";
 import DashboardSwitcher from "./component/DashboardSwitcher";
 import MenuSwitcher from "./component/MenuSwitcher";
 import CreateOrder from "./page/CreateOrder";
+import ViewOrders from "./page/ViewOrders";
 
 function App() {
   return (
@@ -39,12 +40,14 @@ function App() {
             <Route
               element={
                 <ProtectedRoute
-                  allowedRoles={["super_admin", "branch_admin"]}
+                  allowedRoles={["super_admin", "branch_admin", "waiter"]}
                 />
               }
             >
               <Route path="/dashboard" element={<SuperAdminLayout />}>
                 <Route index element={<DashboardSwitcher />} />
+                <Route path="orders" element={<ViewOrders />} />
+
                 {/*
                  * Index route: render the correct dashboard per role.
                  * SuperAdminDashboard guards itself with showUnauthorized so
@@ -94,22 +97,12 @@ function App() {
                  *
                  * Alternatively, keep the route below and use a DashboardSwitcher at index.
                  */}
-                <Route
-                  element={
-                    <ProtectedRoute
-                      allowedRoles={["branch_admin"]}
-                      showUnauthorized
-                    />
-                  }
-                >
-                  {/* <Route path="branch" element={<BranchDashboard />} /> */}
-                  <Route path="create-order" element={<CreateOrder />} />
-                </Route>
+                {/* branch_admin is not allowed to create orders */}
 
                 {/* ── Shared dashboard routes (both roles) ── */}
                 <Route path="create-menu-item" element={<CreateMenuItem />} />
                 <Route path="create-user" element={<CreateUser />} />
-                <Route path="view-menu" element={<MenuSwitcher />} >
+                <Route path="view-menu" element={<MenuSwitcher />}>
                   <Route path="edit-menu-item/:id" element={<EditMenu />} />
                 </Route>
               </Route>
@@ -126,6 +119,27 @@ function App() {
               <Route path="/create-user" element={<CreateUser />} />
               {/* <Route path="/admin/edit-menu-item/:id" element={<EditMenu />} /> */}
             </Route>
+
+            {/* Order creation (waiter + cashier only) */}
+            <Route
+              element={<ProtectedRoute allowedRoles={["waiter", "cashier"]} />}
+            >
+              <Route path="/branch/create-order" element={<CreateOrder />} />
+            </Route>
+
+            {/* View orders (waiter, branch_admin, super_admin) */}
+            <Route
+              element={
+                <ProtectedRoute
+                  allowedRoles={[
+                    "waiter",
+                    "branch_admin",
+                    "cashier",
+                    "super_admin",
+                  ]}
+                />
+              }
+            ></Route>
 
             {/* ── Profile (all staff roles) ── */}
             <Route
