@@ -23,6 +23,9 @@ import DashboardSwitcher from "./component/DashboardSwitcher";
 import MenuSwitcher from "./component/MenuSwitcher";
 import CreateOrder from "./page/CreateOrder";
 import ViewOrders from "./page/ViewOrders";
+import CreateSupplier from "./page/CreateSupplier";
+import CreateStoreItem from "./page/CreateStoreItem";
+import CreateStoreItemVariant from "./page/CreateStoreItemVariant";
 
 function App() {
   return (
@@ -86,6 +89,18 @@ function App() {
                   <Route
                     path="create-sub-category"
                     element={<CreateSubCategory />}
+                  />
+                  <Route
+                    path="inventory/create-supplier"
+                    element={<CreateSupplier />}
+                  />
+                  <Route
+                    path="inventory/create-store-item"
+                    element={<CreateStoreItem />}
+                  />
+                  <Route
+                    path="inventory/create-store-item-variant"
+                    element={<CreateStoreItemVariant />}
                   />
                 </Route>
 
