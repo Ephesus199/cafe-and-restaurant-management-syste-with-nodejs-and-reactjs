@@ -88,7 +88,7 @@ export default function CreateUser() {
       if (!res.data.success) {
         throw new Error(res.data.message);
       }
-      return res.data;
+      return res.data.data;
     },
   });
 
@@ -254,7 +254,7 @@ export default function CreateUser() {
                   {...register("branchId", { required: true })}
                 >
                   <option value="">Select a branch</option>
-                  {branches?.data?.map((branch: { id: string; name: string }) => (
+                  {branches?.map((branch: { id: string; name: string }) => (
                     <option key={branch.id} value={branch.id}>
                       {branch.name}
                     </option>
