@@ -136,30 +136,102 @@ export const createPurchaseBatch = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (!req.user!.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: "Store manager must belong to a branch",
+      });
+    }
+
+    let { branchId } = req.params;
+    if (Array.isArray(branchId)) branchId = branchId[0];
+    if (!branchId) {
+      return res.status(400).json({ success: false, message: "Branch ID is required" });
+    }
+    if (branchId !== req.user!.branchId) {
+      return res.status(403).json({ success: false, message: "Access denied for this branch" });
+    }
+
     const data = createPurchaseBatchSchema.parse(req.body);
 
-    const purchase = await prisma.purchaseBatch.create({
-      data: {
-        branchId: req.user!.branchId!,
-        variantId: data.variantId,
-        ...(data.supplierId ? { supplierId: data.supplierId } : {}),
-        purchaseDate: new Date(data.purchaseDate),
-        quantityPurchased: data.quantityPurchased,
-        quantityRemaining: data.quantityPurchased,
-        unitPrice: data.unitPrice,
-        ...(data.packPrice !== undefined ? { packPrice: data.packPrice } : {}),
-        totalCost: data.quantityPurchased * data.unitPrice,
-        ...(data.invoiceNumber ? { invoiceNumber: data.invoiceNumber } : {}),
-        ...(data.notes ? { notes: data.notes } : {}),
-        purchasedBy: req.user!.id,
-        status: "pending",
+    const variantIds = data.items.map((item) => item.variantId);
+    const storeItemIds = data.items.map((item) => item.storeItemId);
+    const uniqueVariantIds = [...new Set(variantIds)];
+    const uniqueStoreItemIds = [...new Set(storeItemIds)];
+
+    const storeItems = await prisma.storeItem.findMany({
+      where: {
+        id: { in: uniqueStoreItemIds },
+        deletedAt: null,
       },
+      select: { id: true },
     });
+
+    if (storeItems.length !== uniqueStoreItemIds.length) {
+      return res.status(400).json({
+        success: false,
+        message: "One or more selected store items were not found",
+      });
+    }
+
+    const variants = await prisma.storeItemVariant.findMany({
+      where: {
+        id: { in: uniqueVariantIds },
+        deletedAt: null,
+      },
+      select: { id: true, storeItemId: true },
+    });
+
+    if (variants.length !== uniqueVariantIds.length) {
+      return res.status(400).json({
+        success: false,
+        message: "One or more selected variants were not found",
+      });
+    }
+
+    const variantStoreItemMap = new Map(variants.map((v) => [v.id, v.storeItemId]));
+    const hasInvalidPair = data.items.some(
+      (item) => variantStoreItemMap.get(item.variantId) !== item.storeItemId,
+    );
+    if (hasInvalidPair) {
+      return res.status(400).json({
+        success: false,
+        message: "Selected variant does not belong to selected store item",
+      });
+    }
+
+    const purchases = await prisma.$transaction(
+      data.items.map((item) =>
+        prisma.purchaseBatch.create({
+          data: {
+            branchId: req.user!.branchId!,
+            variantId: item.variantId,
+            ...(data.supplierId ? { supplierId: data.supplierId } : {}),
+            purchaseDate: new Date(data.purchaseDate),
+            quantityPurchased: item.quantityPurchased,
+            quantityRemaining: item.quantityPurchased,
+            unitPrice: item.unitPrice,
+            ...(item.packPrice !== undefined ? { packPrice: item.packPrice } : {}),
+            totalCost: item.quantityPurchased * item.unitPrice,
+            ...(data.invoiceNumber ? { invoiceNumber: data.invoiceNumber } : {}),
+            ...(data.notes ? { notes: data.notes } : {}),
+            purchasedBy: req.user!.id,
+            status: "pending",
+          },
+        }),
+      ),
+    );
+
+    const totalCost = purchases.reduce((sum, purchase) => sum + Number(purchase.totalCost), 0);
 
     res.status(201).json({
       success: true,
-      message: "Purchase batch created successfully (pending approval)",
-      data: purchase,
+      message: "Purchase batches created successfully (pending approval)",
+      data: purchases,
+      meta: {
+        count: purchases.length,
+        totalCost,
+      },
     });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
@@ -337,5 +409,59 @@ export const approvePurchase = async (req: AuthRequest, res: Response) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to approve purchase' });
+  }
+};
+
+export const getPurchasesByBranch = async (req: AuthRequest, res: Response) => {
+  try {
+    let { branchId } = req.params;
+    if (Array.isArray(branchId)) branchId = branchId[0];
+    if (!branchId) {
+      return res.status(400).json({ success: false, message: "Branch ID is required" });
+    }
+
+    const currentUser = req.user!;
+    if (currentUser.role !== "branch_admin" || currentUser.branchId !== branchId) {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
+    const queryStatus = Array.isArray(req.query.status) ? req.query.status[0] : req.query.status;
+    const status = typeof queryStatus === "string" ? queryStatus : undefined;
+
+    const purchases = await prisma.purchaseBatch.findMany({
+      where: {
+        branchId,
+        deletedAt: null,
+        ...(status ? { status } : {}),
+      },
+      include: {
+        variant: {
+          include: {
+            storeItem: true,
+          },
+        },
+        supplier: {
+          select: {
+            id: true,
+            supplierName: true,
+          },
+        },
+        purchasedByUser: {
+          select: {
+            id: true,
+            fullName: true,
+            username: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json({
+      success: true,
+      data: purchases,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch purchases" });
   }
 };
