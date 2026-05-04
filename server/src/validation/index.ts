@@ -234,7 +234,10 @@ export const createStoreItemSchema = z.object({
 
 // ====================== STORE ITEM VARIANT ======================
 export const createStoreItemVariantSchema = z.object({
-  storeItemId: z.string().uuid("Invalid store item ID"),
+  storeItemId: z
+    .string()
+    .uuid("Invalid store item ID")
+    .min(1, "Store item is required"),
   variantName: z.string().min(2).max(255),
   baseUnit: z.string().min(1, "Base unit is required"),
   packUnit: z.string().optional(),
@@ -246,18 +249,25 @@ export const createStoreItemVariantSchema = z.object({
 
 // ====================== PURCHASE BATCH ======================
 export const createPurchaseBatchSchema = z.object({
-  variantId: z.string().uuid("Invalid variant ID"),
   supplierId: z.string().uuid().optional(),
   purchaseDate: z
     .string()
     .datetime()
     .optional()
     .default(new Date().toISOString()),
-  quantityPurchased: z.number().positive("Quantity must be greater than 0"),
-  unitPrice: z.number().positive("Unit price must be greater than 0"),
-  packPrice: z.number().positive().optional(),
   invoiceNumber: z.string().optional(),
   notes: z.string().optional(),
+  items: z
+    .array(
+      z.object({
+        storeItemId: z.string().uuid("Invalid store item ID"),
+        variantId: z.string().uuid("Invalid variant ID"),
+        quantityPurchased: z.number().positive("Quantity must be greater than 0"),
+        unitPrice: z.number().positive("Unit price must be greater than 0"),
+        packPrice: z.number().positive().optional(),
+      }),
+    )
+    .min(1, "At least one purchase item is required"),
 });
 
 // ====================== DAILY USAGE ======================
@@ -299,7 +309,7 @@ export const addOrderItemSchema = z.object({
 
 // Update Order Status
 export const updateOrderStatusSchema = z.object({
-  status: z.enum(["pending", "preparing", "ready", "completed", "cancelled"]),
+  status: z.enum(["pending", "preparing", "ready", "served", "completed", "cancelled"]),
 
 });
 

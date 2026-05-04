@@ -248,7 +248,31 @@ export const createDailyUsage = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (!req.user!.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: "Store manager must belong to a branch",
+      });
+    }
+
+    let { branchId } = req.params;
+    if (Array.isArray(branchId)) branchId = branchId[0];
+    if (!branchId) {
+      return res.status(400).json({ success: false, message: "Branch ID is required" });
+    }
+    if (branchId !== req.user!.branchId) {
+      return res.status(403).json({ success: false, message: "Access denied for this branch" });
+    }
+
     const data = createDailyUsageSchema.parse(req.body);
+
+    const variant = await prisma.storeItemVariant.findFirst({
+      where: { id: data.variantId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!variant) {
+      return res.status(400).json({ success: false, message: "Variant not found" });
+    }
 
     const usage = await prisma.dailyUsage.create({
       data: {
@@ -257,8 +281,7 @@ export const createDailyUsage = async (req: AuthRequest, res: Response) => {
         usageDate: new Date(data.usageDate),
         quantityUsed: data.quantityUsed,
         ...(data.notes ? { notes: data.notes } : {}),
-            createdBy: req.user!.id,
-        
+        createdBy: req.user!.id,
       },
     });
 
@@ -342,26 +365,27 @@ export const getLowStockItems = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    const lowStock = await prisma.branchInventory.findMany({
+    const inventoryRows = await prisma.branchInventory.findMany({
       where: {
         branchId,
         deletedAt: null,
-        currentStock: {
-          lt: prisma.branchInventory.fields.minStockLevel
-        }
       },
       include: {
         variant: {
           include: {
-            storeItem: true
-          }
-        }
-      }
+            storeItem: true,
+          },
+        },
+      },
     });
+
+    const lowStock = inventoryRows.filter(
+      (row) => Number(row.currentStock) < Number(row.minStockLevel),
+    );
 
     res.json({
       success: true,
-      data: lowStock
+      data: lowStock,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to fetch low stock items' });

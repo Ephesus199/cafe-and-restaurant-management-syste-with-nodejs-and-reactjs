@@ -2,6 +2,7 @@ import { useFieldArray, useForm, type SubmitHandler } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "../hooks/auth/useAuthContext";
 import api from "../api/axios";
+import BranchStaffSubnav from "../component/BranchStaffSubnav";
 
 type Supplier = { id: string; supplierName: string };
 type StoreItem = {
@@ -125,6 +126,7 @@ export default function CreatePurchaseBatch() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
+      <BranchStaffSubnav />
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Create Purchase</h1>
         <p className="text-sm text-gray-500 mt-1">

@@ -26,6 +26,10 @@ import ViewOrders from "./page/ViewOrders";
 import CreateSupplier from "./page/CreateSupplier";
 import CreateStoreItem from "./page/CreateStoreItem";
 import CreateStoreItemVariant from "./page/CreateStoreItemVariant";
+import CreatePurchaseBatch from "./page/CreatePurchaseBatch";
+import ApprovePurchases from "./page/ApprovePurchases";
+import BranchInventory from "./page/BranchInventory";
+import RecordDailyUsage from "./page/RecordDailyUsage";
 
 function App() {
   return (
@@ -43,13 +47,23 @@ function App() {
             <Route
               element={
                 <ProtectedRoute
-                  allowedRoles={["super_admin", "branch_admin", "waiter"]}
+                  allowedRoles={["super_admin", "branch_admin", "waiter", "cashier", "chef"]}
                 />
               }
             >
               <Route path="/dashboard" element={<SuperAdminLayout />}>
                 <Route index element={<DashboardSwitcher />} />
                 <Route path="orders" element={<ViewOrders />} />
+                <Route
+                  element={
+                    <ProtectedRoute
+                      allowedRoles={["branch_admin"]}
+                      showUnauthorized
+                    />
+                  }
+                >
+                  <Route path="purchase-approvals" element={<ApprovePurchases />} />
+                </Route>
 
                 {/*
                  * Index route: render the correct dashboard per role.
@@ -142,7 +156,7 @@ function App() {
               <Route path="/branch/create-order" element={<CreateOrder />} />
             </Route>
 
-            {/* View orders (waiter, branch_admin, super_admin) */}
+            {/* View orders (all operational roles) */}
             <Route
               element={
                 <ProtectedRoute
@@ -151,10 +165,29 @@ function App() {
                     "branch_admin",
                     "cashier",
                     "super_admin",
+                    "chef",
                   ]}
                 />
               }
-            ></Route>
+            >
+              <Route path="/branch/orders" element={<ViewOrders />} />
+            </Route>
+
+            {/* ── Profile (all staff roles) ── */}
+            <Route
+              element={<ProtectedRoute allowedRoles={["store_manager"]} />}
+            >
+              <Route path="/branch/purchases/create" element={<CreatePurchaseBatch />} />
+              <Route path="/branch/usage/record" element={<RecordDailyUsage />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["branch_admin", "store_manager"]} />
+              }
+            >
+              <Route path="/branch/inventory" element={<BranchInventory />} />
+            </Route>
 
             {/* ── Profile (all staff roles) ── */}
             <Route

@@ -43,7 +43,7 @@ router.post(
 // Chef and Waiter can update status
 router.patch(
   "/orders/:orderId/status",
-  authorizeRoles("chef", "waiter", "branch_admin"),
+  authorizeRoles("chef", "waiter"),
   validate(updateOrderStatusSchema),
   updateOrderStatus,
 );
@@ -61,7 +61,7 @@ router.patch(
 // Get orders with role-based filtering
 router.get(
   "/view",
-  authorizeRoles("waiter", "branch_admin", "cashier", "super_admin"),
+  authorizeRoles("waiter", "branch_admin", "cashier", "super_admin", "chef"),
   viewOrders,
 );
 

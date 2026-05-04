@@ -237,13 +237,55 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
       if (!orderId) {
           return res.status(400).json({ success: false, message: "Order ID is required" });
         }
-    const { status } = updateOrderStatusSchema.parse(req.body)
+    const { status } = updateOrderStatusSchema.parse(req.body);
+    const actor = req.user!;
+
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        status: true,
+        waiterId: true,
+        branchId: true,
+      },
+    });
+
+    if (!existingOrder || existingOrder.status === "cancelled") {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    if (actor.role === "chef") {
+      if (!actor.branchId || existingOrder.branchId !== actor.branchId) {
+        return res.status(403).json({ success: false, message: "Access denied" });
+      }
+
+      const allowedChefTransitions = new Set(["preparing", "ready"]);
+      if (existingOrder.status !== "pending" || !allowedChefTransitions.has(status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Chef can only change pending orders to preparing or ready.",
+        });
+      }
+    } else if (actor.role === "waiter") {
+      if (existingOrder.waiterId !== actor.id) {
+        return res.status(403).json({ success: false, message: "Access denied" });
+      }
+
+      if (existingOrder.status !== "ready" || status !== "served") {
+        return res.status(400).json({
+          success: false,
+          message: "Waiter can only change ready orders to served.",
+        });
+      }
+    } else {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
 
     const order = await prisma.order.update({
       where: { id: orderId },
       data: {
-        status: status,
-        ...(status === "completed" && { completedAt: new Date() }),
+        status,
+        ...(status === "served" && { completedAt: new Date() }),
       },
     });
 
@@ -447,71 +489,38 @@ export const viewOrders = async (req: AuthRequest, res: Response) => {
     };
 
     const resolvedPeriod: "day" | "week" | "month" =
-      currentUser.role === "waiter" ? "day" : query.period;
+      currentUser.role === "chef" || currentUser.role === "waiter" ? "day" : query.period;
 
     // Defaults: today
     const today = new Date();
     const resolvedDateStr =
-      currentUser.role === "waiter" ? toLocalISODate(today) : query.date || toLocalISODate(today);
+      currentUser.role === "waiter" || currentUser.role === "chef"
+        ? toLocalISODate(today)
+        : query.date || toLocalISODate(today);
 
-    let branchId: string;
-    let waiterId: string;
+    const where: any = {
+      deletedAt: null,
+    };
 
     if (currentUser.role === "waiter") {
-      branchId = currentUser.branchId!;
-      waiterId = currentUser.id;
+      where.branchId = currentUser.branchId;
+      where.waiterId = currentUser.id;
+    } else if (currentUser.role === "chef") {
+      if (!currentUser.branchId) {
+        return res.status(400).json({ success: false, message: "Chef has no branch assigned." });
+      }
+      where.branchId = currentUser.branchId;
     } else if (currentUser.role === "branch_admin" || currentUser.role === "cashier") {
-      branchId = currentUser.branchId!;
-
-      const selectedWaiterId = query.waiterId;
-      if (!selectedWaiterId) {
-        return res.status(400).json({
-          success: false,
-          message: "Please select a waiter to view orders.",
-        });
+      if (!currentUser.branchId) {
+        return res.status(400).json({ success: false, message: "User has no branch assigned." });
       }
-
-      waiterId = selectedWaiterId;
+      where.branchId = currentUser.branchId;
+      if (query.waiterId) where.waiterId = query.waiterId;
     } else if (currentUser.role === "super_admin") {
-      if (!query.branchId) {
-        return res.status(400).json({
-          success: false,
-          message: "Please select a branch to view orders.",
-        });
-      }
-      if (!query.waiterId) {
-        return res.status(400).json({
-          success: false,
-          message: "Please select a waiter to view orders.",
-        });
-      }
-
-      branchId = query.branchId;
-      waiterId = query.waiterId;
+      if (query.branchId) where.branchId = query.branchId;
+      if (query.waiterId) where.waiterId = query.waiterId;
     } else {
       return res.status(403).json({ success: false, message: "Access denied" });
-    }
-
-    // Confirm waiter belongs to the resolved branch (and is a waiter).
-    const selectedWaiter = await prisma.user.findFirst({
-      where: {
-        id: waiterId,
-        role: "waiter",
-        deletedAt: null,
-        branchId,
-      },
-      select: {
-        id: true,
-        branchId: true,
-        role: true,
-      },
-    });
-
-    if (!selectedWaiter) {
-      return res.status(403).json({
-        success: false,
-        message: "Selected waiter is not valid for the current branch/role.",
-      });
     }
 
     const referenceDate = parseLocalDate(resolvedDateStr);
@@ -525,9 +534,7 @@ export const viewOrders = async (req: AuthRequest, res: Response) => {
 
     const orders = await prisma.order.findMany({
       where: {
-        branchId,
-        waiterId,
-        deletedAt: null,
+        ...where,
         createdAt: {
           gte: range.gte,
           lte: range.lte,
@@ -550,7 +557,7 @@ export const viewOrders = async (req: AuthRequest, res: Response) => {
           },
         },
         waiter: {
-          select: { fullName: true },
+          select: { id: true, fullName: true },
         },
         cashier: {
           select: { fullName: true },

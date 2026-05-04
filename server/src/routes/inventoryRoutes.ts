@@ -11,6 +11,7 @@ import {
   getBranchInventory,
   getLowStockItems,
   approvePurchase,
+  getPurchasesByBranch,
 } from "../controllers/inventoryController";
 import { validate } from "../middleware/validateMiddleware";
 import {
@@ -36,7 +37,7 @@ router.post(
 
 router.get(
   "/suppliers",
-  authorizeRoles("super_admin", "branch_admin"),
+  authorizeRoles("super_admin", "branch_admin", "store_manager"),
   getSuppliers,
 );
 
@@ -64,6 +65,12 @@ router.post(
   authorizeRoles("store_manager"),
   validate(createPurchaseBatchSchema),
   createPurchaseBatch,
+);
+
+router.get(
+  "/branches/:branchId/purchases",
+  authorizeRoles("branch_admin"),
+  getPurchasesByBranch,
 );
 
 // Approve Purchase (Branch Admin only)

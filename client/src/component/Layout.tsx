@@ -89,6 +89,22 @@ export default function SuperAdminLayout() {
           >
             View Orders
           </NavLink>
+          {isBranchAdmin && (
+            <NavLink
+              to="/dashboard/purchase-approvals"
+              className={({ isActive }) => (isActive ? "font-bold" : "")}
+            >
+              Purchase Approvals
+            </NavLink>
+          )}
+          {isBranchAdmin && (
+            <NavLink
+              to="/branch/inventory"
+              className={({ isActive }) => (isActive ? "font-bold" : "")}
+            >
+              Branch inventory
+            </NavLink>
+          )}
           <NavLink
             to="/dashboard/create-user"
             state={{ from: location.pathname }}
