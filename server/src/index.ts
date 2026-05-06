@@ -32,6 +32,7 @@ app.use("/api/branches", (await import("./routes/branchRoutes")).default);
 app.use("/api/menu", (await import("./routes/menuRoutes")).default);
 app.use("/api/inventory", (await import("./routes/inventoryRoutes")).default);
 app.use("/api/orders", (await import("./routes/orderRoutes")).default);
+app.use("/api/reports", (await import("./routes/reportRoutes")).default);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

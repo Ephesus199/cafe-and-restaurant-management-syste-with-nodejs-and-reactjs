@@ -23,6 +23,9 @@ export default function BranchStaffSubnav() {
       <NavLink to="/branch/inventory" className={linkClass}>
         Inventory
       </NavLink>
+      <NavLink to="/branch/reports" className={linkClass}>
+        Reports
+      </NavLink>
     </nav>
   );
 }

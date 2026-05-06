@@ -30,6 +30,7 @@ import CreatePurchaseBatch from "./page/CreatePurchaseBatch";
 import ApprovePurchases from "./page/ApprovePurchases";
 import BranchInventory from "./page/BranchInventory";
 import RecordDailyUsage from "./page/RecordDailyUsage";
+import ReportsDashboard from "./page/ReportsDashboard";
 
 function App() {
   return (
@@ -131,6 +132,8 @@ function App() {
                 {/* ── Shared dashboard routes (both roles) ── */}
                 <Route path="create-menu-item" element={<CreateMenuItem />} />
                 <Route path="create-user" element={<CreateUser />} />
+                <Route path="create-user" element={<CreateUser />} />
+                <Route path="reports" element={<ReportsDashboard />} />
                 <Route path="view-menu" element={<MenuSwitcher />}>
                   <Route path="edit-menu-item/:id" element={<EditMenu />} />
                 </Route>
@@ -187,6 +190,14 @@ function App() {
               }
             >
               <Route path="/branch/inventory" element={<BranchInventory />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["super_admin", "branch_admin", "store_manager"]} />
+              }
+            >
+              <Route path="/branch/reports" element={<ReportsDashboard />} />
             </Route>
 
             {/* ── Profile (all staff roles) ── */}

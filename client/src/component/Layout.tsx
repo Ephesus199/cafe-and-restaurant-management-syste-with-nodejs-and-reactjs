@@ -112,6 +112,12 @@ export default function SuperAdminLayout() {
           >
             Create User
           </NavLink>
+          <NavLink
+            to="/branch/reports"
+            className={({ isActive }) => (isActive ? "font-bold" : "")}
+          >
+            Reports
+          </NavLink>
         </div>
       </div>
 
