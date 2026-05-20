@@ -4,7 +4,11 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { queryClient } from "../lib/queryClient";
 
-export default function MenuControl() {
+type MenuControlProps = {
+  embedded?: boolean;
+};
+
+export default function MenuControl({ embedded = false }: MenuControlProps) {
     const [searchParams, setSearchParams] = useSearchParams();
     const lang = searchParams.get("lang") || "am";
   const navigate = useNavigate();
@@ -125,14 +129,20 @@ export default function MenuControl() {
   };
 
   if (isLoadingMain || isLoadingSub || isLoadingMenu) {
-    return <div className="flex justify-center items-center h-64 text-xl font-semibold text-gray-500">Loading...</div>;
+    return (
+      <div className={`flex justify-center items-center text-sm text-gray-500 ${embedded ? "py-8" : "h-64"}`}>
+        Loading menu...
+      </div>
+    );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Menu Control</h1>
-      </div>
+    <div className={embedded ? "" : "p-6 max-w-7xl mx-auto"}>
+      {!embedded && (
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Menu Control</h1>
+        </div>
+      )}
 
       {/* Main Categories Filter */}
       <div className="mb-6">

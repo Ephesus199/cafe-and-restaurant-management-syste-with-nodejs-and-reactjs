@@ -2,7 +2,18 @@ import { useLocation, useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-// import { stat } from "fs";
+import {
+  DashboardCard,
+  DashboardHeader,
+  DashboardPage,
+  DashboardTable,
+  DashboardTableBody,
+  DashboardTableHead,
+  DashboardTabs,
+  DashboardTd,
+  DashboardTh,
+  StatCard,
+} from "../component/dashboard";
 
 type BranchPrivileges = {
   canEditName: boolean;
@@ -221,64 +232,67 @@ export default function SuperAdminDashboard() {
   const totalSubcategories = getSubcategories.data?.length ?? 0;
   const totalItems = getMenuItems.data?.length ?? 0;
 
-  return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Super Admin Dashboard</h1>
+  const branches = getBranches.data ?? [];
+  const activeBranchCount = branches.filter((b) => b.isActive).length;
+  const inactiveBranchCount = branches.length - activeBranchCount;
 
-      <div className="flex gap-3 border-b mb-6 pb-3">
-        <button
-          type="button"
-          className={`px-4 py-2 rounded-md font-medium ${
-            activeTab === "branches"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-          }`}
-          onClick={() => setActiveTab("branches")}
-        >
-          Branch Info
-        </button>
-        <button
-          type="button"
-          className={`px-4 py-2 rounded-md font-medium ${
-            activeTab === "menu"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-          }`}
-          onClick={() => setActiveTab("menu")}
-        >
-          Menu Info
-        </button>
-      </div>
+  return (
+    <DashboardPage>
+      <DashboardHeader
+        title="Company overview"
+        description="Manage branches, monitor menu structure, and keep company-wide settings up to date."
+        actions={
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard/create-branch")}
+            className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+          >
+            Create branch
+          </button>
+        }
+      />
+
+      <DashboardTabs
+        tabs={[
+          { id: "branches", label: "Branches" },
+          { id: "menu", label: "Menu catalog" },
+        ]}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+      />
 
       {activeTab === "branches" ? (
         <>
           {getBranches.isLoading ? (
-            <div>Loading branches...</div>
+            <p className="text-sm text-gray-500">Loading branches...</p>
           ) : getBranches.isError ? (
-            <div>Failed to load branches.</div>
+            <p className="text-sm text-red-500">Failed to load branches.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full border border-gray-300">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="border border-gray-300 px-4 py-2 text-left">Name</th>
-                    <th className="border border-gray-300 px-4 py-2 text-left">Address</th>
-                    <th className="border border-gray-300 px-4 py-2 text-left">Phone</th>
-                    <th className="border border-gray-300 px-4 py-2 text-left">Active</th>
-                    <th className="border border-gray-300 px-4 py-2 text-left">Privileges</th>
-                    <th className="border border-gray-300 px-4 py-2 text-left">Edit</th>
-                    <th className="border border-gray-300 px-4 py-2 text-left">Delete</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {getBranches.data?.map((branch) => (
-                    <tr key={branch.id} className="hover:bg-gray-50">
-                      <td className="border border-gray-300 px-4 py-2">{branch.name}</td>
-                      <td className="border border-gray-300 px-4 py-2">
-                        {branch.address || "-"}
-                      </td>
-                      <td className="border border-gray-300 px-4 py-2">{branch.phone || "-"}</td>
-                      <td className="border border-gray-300 px-4 py-2">
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <StatCard label="Total branches" value={branches.length} tone="blue" />
+                <StatCard label="Active branches" value={activeBranchCount} tone="green" />
+                <StatCard label="Inactive branches" value={inactiveBranchCount} tone="amber" />
+              </div>
+              <DashboardCard title="Branch list" description="Toggle status, edit, or remove branches.">
+                <DashboardTable>
+                  <DashboardTableHead>
+                    <tr>
+                      <DashboardTh>Name</DashboardTh>
+                      <DashboardTh>Address</DashboardTh>
+                      <DashboardTh>Phone</DashboardTh>
+                      <DashboardTh>Status</DashboardTh>
+                      <DashboardTh>Privileges</DashboardTh>
+                      <DashboardTh>Actions</DashboardTh>
+                    </tr>
+                  </DashboardTableHead>
+                  <DashboardTableBody>
+                  {branches.map((branch) => (
+                    <tr key={branch.id} className="hover:bg-gray-50/80">
+                      <DashboardTd className="font-semibold text-gray-900">{branch.name}</DashboardTd>
+                      <DashboardTd>{branch.address || "-"}</DashboardTd>
+                      <DashboardTd>{branch.phone || "-"}</DashboardTd>
+                      <DashboardTd>
                         {(() => {
                           const isCurrentTogglePending = pendingToggleBranchId === branch.id;
 
@@ -306,26 +320,23 @@ export default function SuperAdminDashboard() {
                             </button>
                           );
                         })()}
-                      </td>
-                      <td className="border border-gray-300 px-4 py-2">
-                        {formatPrivileges(branch.bracnhPrivileges)}
-                      </td>
-                      <td className="border border-gray-300 px-4 py-2">
+                      </DashboardTd>
+                      <DashboardTd>{formatPrivileges(branch.bracnhPrivileges)}</DashboardTd>
+                      <DashboardTd>
+                        <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold"
                           onClick={() =>
                             navigate(`/dashboard/branches/${branch.id}/update`, { state: { from: location.pathname } })
                           }
                         >
                           Edit
                         </button>
-                      </td>
-                      <td className="border border-gray-300 px-4 py-2">
                         <button
                           type="button"
                           disabled={pendingDeleteBranchId === branch.id}
-                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded disabled:opacity-60"
+                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-60"
                           onClick={() => {
                             const shouldDelete = window.confirm(
                               `Are you sure you want to delete ${branch.name}?`,
@@ -336,11 +347,13 @@ export default function SuperAdminDashboard() {
                         >
                           {pendingDeleteBranchId === branch.id ? "Deleting..." : "Delete"}
                         </button>
-                      </td>
+                        </div>
+                      </DashboardTd>
                     </tr>
                   ))}
-                </tbody>
-              </table>
+                  </DashboardTableBody>
+                </DashboardTable>
+              </DashboardCard>
             </div>
           )}
         </>
@@ -353,18 +366,9 @@ export default function SuperAdminDashboard() {
           ) : (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
-                  <p className="text-sm text-blue-700">Total Categories</p>
-                  <p className="text-2xl font-bold text-blue-900">{totalMainCategories}</p>
-                </div>
-                <div className="bg-purple-50 border border-purple-100 rounded-lg p-4">
-                  <p className="text-sm text-purple-700">Total Subcategories</p>
-                  <p className="text-2xl font-bold text-purple-900">{totalSubcategories}</p>
-                </div>
-                <div className="bg-green-50 border border-green-100 rounded-lg p-4">
-                  <p className="text-sm text-green-700">Total Menu Items</p>
-                  <p className="text-2xl font-bold text-green-900">{totalItems}</p>
-                </div>
+                <StatCard label="Total categories" value={totalMainCategories} tone="blue" />
+                <StatCard label="Total subcategories" value={totalSubcategories} tone="purple" />
+                <StatCard label="Total menu items" value={totalItems} tone="green" />
               </div>
 
               <div>
@@ -432,6 +436,6 @@ export default function SuperAdminDashboard() {
           )}
         </>
       )}
-    </div>
+    </DashboardPage>
   );
 }

@@ -14,15 +14,17 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    const isLoginRequest = originalRequest.url?.includes("/auth/login");
+    const requestUrl = originalRequest.url ?? "";
 
-    const isRefreshRequest = originalRequest.url?.includes("/auth/refresh");
+    const isAuthSessionRequest =
+      requestUrl.includes("/auth/login") ||
+      requestUrl.includes("/auth/refresh") ||
+      requestUrl.includes("/auth/me");
 
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      !isLoginRequest &&
-      !isRefreshRequest
+      !isAuthSessionRequest
     ) {
       originalRequest._retry = true;
 
@@ -36,7 +38,16 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         console.log("Token refresh failed:", refreshError);
-        window.location.href = "/login";
+        const path = window.location.pathname;
+        const isPublicAuthPage =
+          path === "/login" ||
+          path === "/forgot-password" ||
+          path === "/reset-password" ||
+          path.startsWith("/menu/");
+
+        if (!isPublicAuthPage) {
+          window.location.href = "/login";
+        }
       }
     }
 

@@ -32,18 +32,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
 
   // Fetch current user profile
-  const { data: userData, isLoading } = useQuery({
+  const { data: userData, isPending: isAuthPending } = useQuery({
     queryKey: ["auth", "me"],
     queryFn: async () => {
       const res = await api.get("/auth/me");
       return res.data.data as User;
     },
-    enabled: true,
     retry: false,
     staleTime: 1000 * 60 * 10, // 10 minutes
   });
-
-  console.log("AuthProvider - userData:", userData);
 
   // Sync user state with fetched data  
 
@@ -57,13 +54,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       password: string;
     }) => {
       const res = await api.post("/auth/login", credentials);
-      console.log("Login response:", res);
       return res.data;
     },
     
     onSuccess: (data) => {
       const { user: loggedInUser } = data.data;
-      console.log("Login successful, user data:", loggedInUser);
 
       setUser(loggedInUser);
 
@@ -92,8 +87,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   console.error("Login failed:", message);    },
   });
 
-  console.log(" login mutation state:", loginMutation);
-
   const login = async (credentials: {
     email?: string;
     username?: string;
@@ -117,7 +110,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const value: AuthContextType = {
     user: userData || user,
     error: error,
-    isLoading: isLoading || loginMutation.isPending,
+    isLoading: isAuthPending || loginMutation.isPending,
     login,
     logout,
     isAuthenticated: !!(userData || user),

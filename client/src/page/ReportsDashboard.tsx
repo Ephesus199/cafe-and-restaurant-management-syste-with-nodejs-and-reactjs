@@ -1,7 +1,20 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import api from "../api/axios";
 import { useAuth } from "../hooks/auth/useAuthContext";
+import BranchStaffSubnav from "../component/BranchStaffSubnav";
+import {
+  DashboardCard,
+  DashboardHeader,
+  DashboardPage,
+  DashboardTable,
+  DashboardTableBody,
+  DashboardTableHead,
+  DashboardTabs,
+  DashboardTd,
+  DashboardTh,
+  StatCard,
+} from "../component/dashboard";
 
 type Period = "daily" | "weekly" | "monthly" | "company";
 
@@ -79,62 +92,30 @@ export default function ReportsDashboard() {
     return isNaN(num) ? "0.00" : num.toFixed(2);
   };
 
+  const tabs = [
+    ...(isSuperAdmin || isBranchAdmin || isStoreManager
+      ? [{ id: "daily" as const, label: "Daily report" }]
+      : []),
+    ...(isSuperAdmin || isBranchAdmin || isStoreManager
+      ? [{ id: "weekly" as const, label: "Weekly report" }]
+      : []),
+    ...(isSuperAdmin || isBranchAdmin ? [{ id: "monthly" as const, label: "Monthly report" }] : []),
+    ...(isSuperAdmin ? [{ id: "company" as const, label: "Company overview" }] : []),
+  ];
+
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Reports Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          View key performance metrics and operational summaries.
-        </p>
-      </div>
+    <DashboardPage>
+      {isStoreManager && <BranchStaffSubnav />}
+      <DashboardHeader
+        title="Reports"
+        description="View key performance metrics and operational summaries for your scope."
+      />
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-2 mb-6 border-b pb-2">
-        {(isSuperAdmin || isBranchAdmin || isStoreManager) && (
-          <button
-            onClick={() => setActiveTab("daily")}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              activeTab === "daily" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Daily Report
-          </button>
-        )}
-        {(isSuperAdmin || isBranchAdmin || isStoreManager) && (
-          <button
-            onClick={() => setActiveTab("weekly")}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              activeTab === "weekly" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Weekly Report
-          </button>
-        )}
-        {(isSuperAdmin || isBranchAdmin) && (
-          <button
-            onClick={() => setActiveTab("monthly")}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              activeTab === "monthly" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Monthly Report
-          </button>
-        )}
-        {isSuperAdmin && (
-          <button
-            onClick={() => setActiveTab("company")}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              activeTab === "company" ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Company Overview
-          </button>
-        )}
-      </div>
+      <DashboardTabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
-      {/* Filters */}
       {activeTab !== "company" && (
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-wrap gap-4 items-end">
+        <DashboardCard title="Filters" className="mb-6">
+          <div className="flex flex-wrap gap-4 items-end">
           {isSuperAdmin && (
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Branch</label>
@@ -197,11 +178,11 @@ export default function ReportsDashboard() {
               />
             </div>
           )}
-        </div>
+          </div>
+        </DashboardCard>
       )}
 
-      {/* Content */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+      <DashboardCard>
         {isLoading ? (
           <p className="text-gray-500">Loading report data...</p>
         ) : isError ? (
@@ -215,12 +196,11 @@ export default function ReportsDashboard() {
                 <div>
                   <h2 className="text-xl font-bold mb-4">Company Inventory Summary</h2>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
-                      <p className="text-sm text-purple-700 font-medium">Total Inventory Value</p>
-                      <p className="text-3xl font-bold text-purple-900 mt-1">
-                        ${formatMoney(reportData.companyInventory.total_inventory_value)}
-                      </p>
-                    </div>
+                    <StatCard
+                      label="Total inventory value"
+                      value={`$${formatMoney(reportData.companyInventory.total_inventory_value)}`}
+                      tone="purple"
+                    />
                     <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
                       <p className="text-sm text-blue-700 font-medium">Total Branches</p>
                       <p className="text-3xl font-bold text-blue-900 mt-1">
@@ -311,7 +291,7 @@ export default function ReportsDashboard() {
             )}
           </div>
         )}
-      </div>
-    </div>
+      </DashboardCard>
+    </DashboardPage>
   );
 }

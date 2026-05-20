@@ -159,24 +159,7 @@ export default function CreateMenuItem() {
       <h1 className="text-2xl font-bold mb-6">Create Menu Item</h1>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Default Name */}
-        {/* <div>
-          <label className="block mb-2">Default Name</label>
-
-          <input
-            type="text"
-            {...register("name", {
-              required: "Name required",
-            })}
-            className="w-full border p-3 rounded-lg"
-          />
-
-          {errors.name && (
-            <p className="text-red-500 text-sm">{errors.name.message}</p>
-          )}
-        </div> */}
-
-        {/* Price */}
+   
         <div>
           <label className="block mb-2">Price</label>
 
